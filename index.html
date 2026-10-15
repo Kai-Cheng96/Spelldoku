@@ -499,6 +499,7 @@ body.hasbanner .screen{padding-bottom:calc(74px + env(safe-area-inset-bottom,0px
 .tiles button:disabled{opacity:.18;box-shadow:none}
 .slots.picking span:empty{cursor:pointer;border-color:#C9B6FF;border-style:solid;box-shadow:0 0 0 2px rgba(201,182,255,.25);animation:slotcall 1.2s ease-in-out infinite}
 @keyframes slotcall{0%,100%{background:rgba(201,182,255,.05)}50%{background:rgba(201,182,255,.22)}}
+.tleft{display:inline-block;margin-left:4px;padding:1px 8px;border-radius:999px;background:rgba(255,217,120,.18);color:#FFE7A8;font-weight:900;font-size:.85em;white-space:nowrap}
 .kb{display:flex;flex-direction:column;gap:9px;width:calc(100% + 28px);margin-inline:-14px;padding:10px 4px 6px;border-radius:14px;background:rgba(10,7,26,.45);touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .kb div{display:flex;gap:5px;justify-content:center}
 .kb div:nth-child(2){padding-inline:calc((100% - 9 * 5px) / 20)}
@@ -1736,8 +1737,16 @@ $("board").addEventListener("pointerdown", e => {
   e.preventDefault(); drag = {start: i, moved: false, seen: new Set([i])};
 });
 $("board").addEventListener("pointermove", e => {
-  if (!drag || (G.tut && G.tut.phase !== "bonus")) return;
+  if (!drag || !G) return;
   const i = cellAt(e.clientX, e.clientY); if (i < 0 || drag.seen.has(i)) return;
+  // in a lesson, a drag only crosses the glowing cells of the current step
+  if (G.tut && G.tut.phase === "guided"){
+    const s = G.tut.s; if (!s || !s.act || !s.act.x) return;
+    if (!drag.moved){ drag.moved = true; if (s.act.x.includes(drag.start)) tutCross(drag.start); }
+    drag.seen.add(i); if (s.act.x.includes(i)) tutCross(i);
+    return;
+  }
+  if (G.tut && G.tut.phase !== "bonus") return;
   // the first cell decides the brush: start on a cross and the drag rubs crosses out, otherwise it paints them
   if (!drag.moved){
     drag.moved = true; drag.erase = G.marks[drag.start] === 1; snapshot();
@@ -1763,7 +1772,7 @@ function singleTap(i){
   if (G.marks[i] === 2) return;
   if (G.tut && G.tut.phase === "guided"){
     const s = G.tut.s;
-    if (s.act.x && s.act.x.includes(i)){ G.lastTap = null; snapshot(); crossOut(s.act.x, true); SFX.cross(); setTimeout(tutRender, 260); }
+    if (s.act.x && s.act.x.includes(i)){ G.lastTap = null; tutCross(i); }
     else if (!(s.act.pick && s.act.pick.includes(i))) nudgeTargets();
     return;
   }
@@ -2090,9 +2099,18 @@ function tutRender(){
   const s = solverStep(P, G.marks, "");
   if (!s.act){ G.hint = null; render(); return; }
   T.s = s; G.hint = {cells: s.cells, focus: s.focus};
-  const how = s.act.pick ? " <b>Double-tap</b> the glowing letter." : " <b>Tap</b> any glowing cell to cross them out.";
+  const how = s.act.pick ? " <b>Double-tap</b> the glowing letter to pick it." : ` <b>Tap</b> or <b>drag across</b> the glowing cells to cross them out.${s.act.x.length > 1 ? ` <span class="tleft">${s.act.x.filter(j => G.marks[j] !== 1).length} to go</span>` : ""}`;
   setCard("Pip", s.text + how, P.id === "T2" ? sub : "");
   render();
+}
+// lessons: the player crosses each highlighted cell themselves; the next step starts once all are done
+function tutCross(i){
+  const s = G.tut && G.tut.s; if (!s || !s.act || !s.act.x || G.marks[i] !== 0) return;
+  if (!G.tut.snap){ snapshot(); G.tut.snap = true; }
+  G.marks[i] = 1; SFX.cross(); poof(i, "cross"); render();
+  const left = s.act.x.filter(j => G.marks[j] !== 1).length, tl = document.querySelector("#ctext .tleft");
+  if (tl) tl.textContent = left ? `${left} to go` : "done!";
+  if (!left && !G.tut.advancing){ G.tut.advancing = true; setTimeout(() => { G.tut.advancing = false; G.tut.snap = false; tutRender(); }, 380); }
 }
 $("nextBtn").onclick = () => { const T = G.tut; T.step++; if (T.step >= INTROS[G.P.id].length) T.phase = "guided"; tutRender(); };
 
