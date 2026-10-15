@@ -1522,7 +1522,7 @@ function guidePages(){
     {kind: "dust", icon: ICON.moon, title: "Moondust", pip: "Moondust buys hints. Save it for the grids that really have you stuck.",
      body: `You earn moondust every level: <b>${E.clear}</b> for a clear, <b>+${E.perfect}</b> for a perfect grid, <b>+${E.early}</b> for an early guess, <b>+${E.boss}</b> for a boss. Spend it on hints (<b>✦${C.hint}</b>) and reveals (<b>✦${C.reveal}</b>). Visit every day for your login streak: day 7 brings 3 free hints.`},
     {kind: "guide", icon: ICON.hint, title: "When you're stuck", pip: "Every grid can be solved by logic alone. A hint just shows you the next step.",
-     body: `<b>Hint</b> shows the next logical step and explains it. <b>Reveal</b> places a correct letter. Once the grid is done, <b>Place a letter</b> puts one letter of your choice in its spot, free once per level. Out of hints? Spend moondust or watch a short ad.`},
+     body: `Remember, the word is the goal and the grid is your <b>free hint</b>: solve a few more cells and new letters fly into the orb at no cost. <b>Hint</b> shows the next logical step and explains it. <b>Reveal</b> places a correct letter. Once the grid is done, <b>Place a letter</b> puts one letter of your choice in its spot, free once per level. Out of hints? Spend moondust or watch a short ad.`},
   ];
 }
 function showGuide(fromSettings){
@@ -2079,7 +2079,8 @@ const INTROS = {
   T1: ["Hi, I'm <b>Pip</b>! Every puzzle hides a magic word. Let's find one together.",
        "The rules: pick exactly <b>one letter</b> in every row, every column and every coloured region.",
        "Picks can never <b>touch</b>, not even corner to corner. Tap once to cross out a letter. Double-tap to pick it."],
-  T2: ["Each letter you pick flies into the <b>orb</b>, jumbled up.",
+  T2: ["In Spelldoku, <b>guessing the word is the goal</b>. The grid is your free hint: every letter you solve on it is a clue that costs no moondust.",
+       "Each letter you pick flies into the <b>orb</b>, jumbled up.",
        "Guess the word while <b>3 or more letters</b> are still unfound and you earn a <b>rune</b>. Each level gives only <b>one chance</b> at its rune, so choose your moment!",
        "Runes open secret <b>Riddle Vaults</b> on the tree, which pay the most <b>moondust</b>. Moondust buys hints. I'll explain it all after this lesson!"]
 };
@@ -2230,7 +2231,7 @@ $("setBtn").onclick = () => {
   $("sAuto").onchange = e => { settings.autoX = e.target.checked; saveAll(); };
   $("sVib").onchange = e => { settings.vibe = e.target.checked; saveAll(); if (settings.vibe) buzz("win"); };
   $("sAll").onchange = e => { settings.unlockAll = e.target.checked; saveAll(); renderMap(); };
-  $("sReset").onclick = () => { store.set("vaultsShown", []); done = {}; runes = {}; inv = {hints: ECON.start.hints, revs: 0, dust: ECON.start.dust}; saveAll(); renderMap(); closeSheet(); };
+  $("sReset").onclick = () => { ["guideSeen", "vaultIntro", "avatar"].forEach(k => { try { localStorage.removeItem("sd2-" + k); } catch (e) {} }); store.set("vaultsShown", []); done = {}; runes = {}; inv = {hints: ECON.start.hints, revs: 0, dust: ECON.start.dust}; saveAll(); renderMap(); closeSheet(); setTimeout(() => { if ($("modal").hidden) avatarSheet(true); }, 300); };
   $("sDone").onclick = closeSheet;
   $("sGuide").onclick = () => showGuide(true);
 
