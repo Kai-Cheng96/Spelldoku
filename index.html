@@ -499,6 +499,7 @@ body.hasbanner .screen{padding-bottom:calc(74px + env(safe-area-inset-bottom,0px
 .tiles button{width:46px;height:46px;border-radius:50%;border:none;font-family:var(--display);font-weight:800;font-size:20px;color:#2A1640;
   background:radial-gradient(circle at 35% 30%,#FFF1C4,var(--gold) 60%,#C08A33);box-shadow:0 0 12px rgba(245,198,106,.5)}
 .tiles button:disabled{opacity:.18;box-shadow:none}
+.slots span.f:not(.lock){cursor:pointer}
 .slots.picking span:empty{cursor:pointer;border-color:#C9B6FF;border-style:solid;box-shadow:0 0 0 2px rgba(201,182,255,.25);animation:slotcall 1.2s ease-in-out infinite}
 @keyframes slotcall{0%,100%{background:rgba(201,182,255,.05)}50%{background:rgba(201,182,255,.22)}}
 .tleft{display:inline-block;margin-left:4px;padding:1px 8px;border-radius:999px;background:rgba(255,217,120,.18);color:#FFE7A8;font-weight:900;font-size:.85em;white-space:nowrap}
@@ -1852,7 +1853,12 @@ function openSpell(mode, keep){
   const P = G.P, rows = picksRows();
   const found = G.orbOrder.filter(r => rows.has(r)).map(r => P.grid[r][P.sol[r]]);
   // slot-based: any position can be locked (the anchored first letter, or reveals)
-  if (!keep || !SP || SP.mode !== mode) SP = {mode, slots: Array(N).fill(null), tileOf: Array(N).fill(null), locked: new Set(), tiles: G.orbOrder.map(r => P.grid[r][P.sol[r]])};
+  if (!keep || !SP || SP.mode !== mode){
+    SP = {mode, slots: Array(N).fill(null), tileOf: Array(N).fill(null), locked: new Set(), tiles: G.orbOrder.map(r => P.grid[r][P.sol[r]])};
+    // letters placed or revealed earlier this level stay put, and an unfinished guess comes back as you left it
+    Object.keys(G.lockedSlots || {}).forEach(k => spellLock(+k));
+    if (mode === "early" && G.earlyDraft) G.earlyDraft.forEach((ch, k) => { if (ch && !SP.locked.has(k)) SP.slots[k] = ch; });
+  }
   SP.placing = false;
   const kb = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
   const title = mode === "final" ? "Cast the spell" : "Guess the word";
@@ -1883,14 +1889,15 @@ function openSpell(mode, keep){
       spellType(+b.dataset.k);
     };
     $("sClear").onclick = () => { spellClear(); spellRender(); };
+    $("sSlots").onclick = e => { const pos = [...$("sSlots").children].indexOf(e.target.closest("span")); if (pos >= 0 && !SP.placing) spellUntype(pos); };
     $("sRev").onclick = spellReveal;
   } else {
     $("sSlots").onclick = e => {
-      if (!SP.placing) return;
-      const pos = [...$("sSlots").children].indexOf(e.target.closest("span")); if (pos >= 0) spellPlaceSlot(pos);
+      const pos = [...$("sSlots").children].indexOf(e.target.closest("span")); if (pos < 0) return;
+      if (SP.placing) spellPlaceSlot(pos); else spellUntype(pos);
     };
     $("kb").onclick = e => { const b = e.target.closest("button"); if (!b) return; if (b.dataset.del) spellDelete(); else spellType(b.dataset.ch); };
-    $("sClose").onclick = () => { closeSheet(); if (G.tut && G.tut.phase === "offer") { G.tut.phase = "guided"; tutRender(); } };
+    $("sClose").onclick = () => { G.earlyDraft = SP.slots.map((ch, k) => SP.locked.has(k) ? null : ch); closeSheet(); if (G.tut && G.tut.phase === "offer") { G.tut.phase = "guided"; tutRender(); } };
   }
   $("sPlace").onclick = placeStart;
   spellRender();
@@ -1898,6 +1905,7 @@ function openSpell(mode, keep){
 function spellLock(pos, tile){
   const ch = G.P.word[pos];
   SP.slots[pos] = ch; SP.locked.add(pos);
+  G.lockedSlots = G.lockedSlots || {}; G.lockedSlots[pos] = ch;
   if (SP.mode === "final"){
     const used = new Set(SP.tileOf.filter((t, k) => t !== null && SP.locked.has(k) && k !== pos));
     SP.tileOf[pos] = tile !== undefined ? tile : SP.tiles.findIndex((x, j) => x === ch && !used.has(j));
@@ -1947,6 +1955,11 @@ function spellPlace(tile){
   const pos = [...Array(N).keys()].find(k => !SP.locked.has(k) && G.P.word[k] === ch);
   if (pos === undefined) return;
   spellClear(); spellLock(pos, tile); placeDone();
+}
+// tap a letter you typed to take it back out (placed and revealed letters are correct, so they stay)
+function spellUntype(pos){
+  if (SP.locked.has(pos) || !SP.slots[pos]) return;
+  SP.slots[pos] = null; SP.tileOf[pos] = null; SFX.type(); spellRender();
 }
 function spellClear(){ for (let k = 0; k < N; k++) if (!SP.locked.has(k)){ SP.slots[k] = null; SP.tileOf[k] = null; } }
 function spellDelete(){ for (let k = N - 1; k >= 0; k--) if (!SP.locked.has(k) && SP.slots[k]){ SP.slots[k] = null; SP.tileOf[k] = null; break; } spellRender(); }
