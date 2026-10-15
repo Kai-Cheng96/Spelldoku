@@ -21,7 +21,7 @@ body{margin:0;font:14px system-ui,-apple-system,sans-serif;overscroll-behavior-y
 img{max-width:100%}
 [hidden]{display:none!important}
 </style>
-<script>window.SPELLDOKU_APP = true;</script>
+<script>window.SPELLDOKU_APP = true;window.SPELLDOKU_SHOWCASE = true;</script>
 </head>
 <body>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800&family=Nunito:wght@600;700;800;900&display=swap">
@@ -189,6 +189,8 @@ button:focus-visible{outline:3px solid var(--gold2);outline-offset:2px}
 .lbbtn.na .cup{animation-delay:2.2s}
 .lbbtn.na.owned{opacity:.75}
 .lbbtn.na.owned .cup{animation:none}
+.showcase #naBtn{display:none}
+.showcase .lbbtn.av{top:62px}
 .lbbtn.av{top:116px;border-color:rgba(201,182,255,.55);color:#E3D9FF}
 .avbtnpic{display:block;width:30px;height:30px;margin-bottom:1px;filter:drop-shadow(0 0 4px rgba(201,182,255,.6))}
 .lbbtn.sk{left:auto;right:max(10px, env(safe-area-inset-right,0px));top:62px;border-color:rgba(255,158,90,.5);color:#FFD9B8;box-shadow:0 0 12px rgba(255,158,90,.2),inset 0 1px 0 rgba(255,255,255,.08)}
@@ -2191,7 +2193,7 @@ function outOfLives(){
 let adTimer = null;
 function watchAd(kind, then, onCancel){
   const what = kind === "hint" ? "+1 hint" : kind === "reveal" ? "+1 reveal" : kind === "place" ? "one more letter placed for you" : "+1 heart";
-  openSheet(`<h2>Watch an ad</h2><p>Prototype stand-in: a rewarded ad would play here. You get ${what}.</p>
+  openSheet(`<h2>Watch an ad</h2><p>A short ad would play here. You get ${what}.</p>
     <div class="adbox" role="timer" aria-live="polite"><b id="adN">3</b>seconds</div>
     <button class="btn" id="adSkip">Cancel</button>`, true);
   let n = 3;
@@ -2656,13 +2658,15 @@ setTimeout(streakAuto, 1800);
 /* ---------- ads: a bottom banner and an occasional pop-up between levels; "Remove ads" turns both off.
    Hints and reveals are never affected: they always cost moondust or a rewarded ad. ---------- */
 const ADS = {interFrom: 15, every: 3, skipAfter: 5, quietAfterReward: 120000};
+const SHOWCASE = !!window.SPELLDOKU_SHOWCASE;   // tester build: no banner, no pop-ups, no Remove-ads button
+if (SHOWCASE) document.body.classList.add("showcase");
 function updateBanner(){
-  const on = !settings.noAds && !!done.T2 && $("book2").hidden && (!$("map").hidden || !$("game").hidden);
+  const on = !SHOWCASE && !settings.noAds && !!done.T2 && $("book2").hidden && (!$("map").hidden || !$("game").hidden);
   if ($("adBanner").hidden === on) $("adBanner").hidden = !on;
   if (document.body.classList.contains("hasbanner") !== on) document.body.classList.toggle("hasbanner", on);
 }
 function maybeInterstitial(P, then){
-  if (settings.noAds || P.kind !== "level" || +P.id < ADS.interFrom) return false;
+  if (SHOWCASE || settings.noAds || P.kind !== "level" || +P.id < ADS.interFrom) return false;
   const n = store.get("clearsSinceAd", 0) + 1; store.set("clearsSinceAd", n);
   if (n < ADS.every || Date.now() - store.get("lastAdAt", 0) < ADS.quietAfterReward) return false;
   store.set("clearsSinceAd", 0);
