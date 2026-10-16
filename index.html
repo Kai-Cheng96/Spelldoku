@@ -510,7 +510,9 @@ body.hasbanner .screen{padding-bottom:calc(74px + env(safe-area-inset-bottom,0px
 .kb button:active{transform:translateY(1px);background:#5A47A8;box-shadow:none}
 .kb button.wide{flex:1.6 1 0;font-size:20px}
 .kb button.have{border-color:var(--gold);color:var(--gold2)}
+.anchorline{font-size:12.5px!important;color:#FFE7A8!important;margin-top:-6px!important}
 .found{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.found b.used{background:#2A2152!important;color:#6E62A3!important;box-shadow:none!important;transition:background .2s,color .2s}
 .found b{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--display);color:#2A1640;
   background:radial-gradient(circle at 35% 30%,#FFF1C4,var(--gold) 60%,#C08A33)}
 .msg{min-height:20px;font-weight:800;color:var(--bad);font-size:14px}
@@ -921,7 +923,7 @@ const MAX_LIVES = 3, RUNES_PER_VAULT = 2, RUNE_HIDDEN = 3;   // a rune needs the
 const ECON = {
   start: {hints: 3, dust: 0},                                   // starter hints, then moondust or ads
   earn:  {clear: 1, perfect: 2, early: 3, boss: 5, vault: 10, vaultPerfect: 25},
-  cost:  {hint: 30, reveal: 40}
+  cost:  {hint: 20, reveal: 30, placeKnown: 10, placeUnknown: 20, placeFinal: 10}
 };
 let done = store.get("done", {});
 let runes = store.get("runes", {});
@@ -1525,7 +1527,7 @@ function guidePages(){
     {kind: "dust", icon: ICON.moon, title: "Moondust", pip: "Moondust buys hints. Save it for the grids that really have you stuck.",
      body: `You earn moondust every level: <b>${E.clear}</b> for a clear, <b>+${E.perfect}</b> for a perfect grid, <b>+${E.early}</b> for an early guess, <b>+${E.boss}</b> for a boss. Spend it on hints (<b>✦${C.hint}</b>) and reveals (<b>✦${C.reveal}</b>). Visit every day for your login streak: day 7 brings 3 free hints.`},
     {kind: "guide", icon: ICON.hint, title: "When you're stuck", pip: "Every grid can be solved by logic alone. A hint just shows you the next step.",
-     body: `Remember, the word is the goal and the grid is your <b>free hint</b>: solve a few more cells and new letters fly into the orb at no cost. <b>Hint</b> shows the next logical step and explains it. <b>Reveal</b> places a correct letter. Once the grid is done, <b>Place a letter</b> puts one letter of your choice in its spot, free once per level. Out of hints? Spend moondust or watch a short ad.`},
+     body: `Remember, the word is the goal and the grid is your <b>free hint</b>: solve a few more cells and new letters fly into the orb at no cost. <b>Hint</b> (✦${C.hint}) shows the next logical step; <b>Reveal</b> (✦${C.reveal}) solves a cell. On the guess screen, <b>Place a letter</b> puts a letter in its spot: ✦${C.placeKnown} for a letter you've found, ✦${C.placeUnknown} for one you haven't. Finish the grid and one placement is free, then ✦${C.placeFinal} each. Out of moondust? One short ad places 2 letters, and if you're truly stuck, <b>Cast it for me</b> solves the word for one ad.`},
   ];
 }
 function showGuide(fromSettings){
@@ -1816,6 +1818,12 @@ function tryPick(i, opts){
     return;
   }
   G.marks[i] = 2; G.lastNew = r;
+  if (G.orb && !G.anchorDone){
+    // the very first letter found drops straight into its place in the word
+    const L = P.grid[r][P.sol[r]], pos = P.word.split("").findIndex((ch, k) => ch === L && !(G.lockedSlots || {})[k]);
+    if (pos >= 0){ G.anchorDone = true; G.lockedSlots = Object.assign({}, G.lockedSlots, {[pos]: L}); G.anchorNote = `<b style="color:#FFD978">${L}</b> is letter ${pos + 1} of ${N}. I've placed it in the word for you.`; }
+    if (pos >= 0 && !G.tut && $("orbtip")) $("orbtip").innerHTML = G.anchorNote;
+  }
 
   if (opts && opts.reveal) G.revealed.add(i);
   render(); poof(i, "pick"); burst(i); flyToOrb(i); SFX.pick(picksRows().size - 1); if (G.orb) SFX.orb();
@@ -1868,18 +1876,19 @@ function openSpell(mode, keep){
     P.kind === "tut" ? "Guess right and you earn a rune." :
     G.replay ? "This is a replay, so no rune, but a right guess finishes the level. A wrong guess costs a heart." :
     runeOK ? "Guess right now and you earn this level's rune. It's your only chance at it. A wrong guess costs a heart." : `A rune needs ${RUNE_HIDDEN}+ letters still unfound, so none this time, but a right guess finishes the level.`;
+  const castRow = mode === "final" && !G.tut ? `<button class="btn" id="sCast" hidden style="width:100%;border-color:#FF9EC0;color:#FFD0E0">Cast it for me <span class="badge" style="background:#FF7FA8;color:#2A1640">▶ Ad</span></button>` : "";
+  const anchorLine = G.anchorDone ? `<p class="anchorline">Your first letter is already in its place.${mode === "final" && !G.finalGift ? " Finishing the grid also earns you one free letter to place." : ""}</p>` : "";
   openSheet(`
     <h2>${title}</h2>
     <div class="riddleq">“${P.clue}”</div>
-    <p>${lead}</p>
+    <p>${lead}</p>${anchorLine}
     ${mode === "early" && found.length ? `<div class="found" aria-label="Letters found so far">${found.map(ch => `<b>${ch}</b>`).join("")}</div>` : ""}
     <div class="slots" id="sSlots" aria-live="polite">${Array(N).fill("<span></span>").join("")}</div>
     <div class="msg" id="sMsg" role="status"></div>
     ${mode === "final" ? `<div class="tiles" id="sTiles">${SP.tiles.map((ch, k) => `<button data-k="${k}" aria-label="Letter ${ch}">${ch}</button>`).join("")}</div>`
       : `<div class="kb" id="kb">${kb.map((row, ri) => `<div>${row.split("").map(ch => `<button data-ch="${ch}" class="${found.includes(ch) ? "have" : ""}">${ch}</button>`).join("")}${ri === 2 ? `<button class="wide" data-del="1" aria-label="Delete">⌫</button>` : ""}</div>`).join("")}</div>`}
     <div class="row" style="width:100%">
-      ${mode === "final" ? `<button class="btn" id="sClear" style="flex:1">Clear</button><button class="btn" id="sRev" style="flex:1">Reveal<span class="badge" id="sRevN">${priceTag("reveal", "#2A1640")}</span></button>
-        </div><div class="row" style="width:100%"><button class="btn" id="sPlace" style="flex:1;border-color:#C9B6FF;color:#E3D9FF">${placeLabel()}</button>`
+      ${mode === "final" ? `<button class="btn" id="sClear" style="flex:1">Clear</button><button class="btn" id="sPlace" style="flex:1.6;border-color:#C9B6FF;color:#E3D9FF">${placeLabel()}</button></div>${castRow}<div class="row" style="display:none">`
         : `<button class="btn" id="sClose" style="flex:1">Keep solving</button><button class="btn" id="sPlace" style="flex:1.3;border-color:#C9B6FF;color:#E3D9FF">${placeLabel()}</button>`}
     </div>`, true);
   if (mode === "final"){
@@ -1890,7 +1899,6 @@ function openSpell(mode, keep){
     };
     $("sClear").onclick = () => { spellClear(); spellRender(); };
     $("sSlots").onclick = e => { const pos = [...$("sSlots").children].indexOf(e.target.closest("span")); if (pos >= 0 && !SP.placing) spellUntype(pos); };
-    $("sRev").onclick = spellReveal;
   } else {
     $("sSlots").onclick = e => {
       const pos = [...$("sSlots").children].indexOf(e.target.closest("span")); if (pos < 0) return;
@@ -1900,7 +1908,18 @@ function openSpell(mode, keep){
     $("sClose").onclick = () => { G.earlyDraft = SP.slots.map((ch, k) => SP.locked.has(k) ? null : ch); closeSheet(); if (G.tut && G.tut.phase === "offer") { G.tut.phase = "guided"; tutRender(); } };
   }
   $("sPlace").onclick = placeStart;
+  if ($("sCast")){ $("sCast").onclick = castSpell; castOffer(); clearTimeout(G.castTimer); const g0 = G; G.castTimer = setTimeout(() => { if (G !== g0 || !G) return; G.castWaited = true; castOffer(); }, 40000); }
   spellRender();
+}
+/* Cast it for me: once the grid is done and the player is stuck (a wrong guess, or 40 seconds of staring), one ad
+   solves the word and clears the level. It pays the clear reward only: no perfect bonus, no leaderboard hearts. */
+function castOffer(){ const b = $("sCast"); if (b && G && SP && SP.mode === "final" && ((G.wrongFinal || 0) > 0 || G.castWaited)) b.hidden = false; }
+function castSpell(){
+  watchAd("cast", () => {
+    G.cast = true; G.helped = true; G.lockedPerfect = undefined;
+    for (let k = 0; k < N; k++) SP.slots[k] = G.P.word[k];
+    SFX.win(); win({cast: true});
+  }, () => openSpell("final", true));
 }
 function spellLock(pos, tile){
   const ch = G.P.word[pos];
@@ -1913,24 +1932,37 @@ function spellLock(pos, tile){
 }
 /* Place a letter: the first one each level is free, every extra one costs a short ad. Any placement ends the perfect bonus,
    but it never touches the rune: a player who places a letter and then guesses early still earns it. */
-const placeLabel = () => (G.places || 0) === 0 ? "Place a letter · free" : G.paidPlace ? "Place a letter · ready" : `Place a letter <span class="badge" style="background:#FF7FA8;color:#2A1640">▶ Ad</span>`;
+/* Placing letters in the word:
+   - Guess screen: a box whose letter you've already found costs ✦10, a box whose letter you haven't found costs ✦20.
+   - Final screen: finishing the grid earns one free placement, then each one costs ✦10.
+   - Short of moondust? One ad places 2 letters. Paid placements end the perfect bonus; the rune is never affected. */
+const finalGift = () => SP && SP.mode === "final" && !G.finalGift;
+const AD_BADGE = `<span class="badge" style="background:#FF7FA8;color:#2A1640">▶ Ad</span>`;
+function placeCost(pos){
+  if (SP.mode === "final") return ECON.cost.placeFinal;
+  const ch = G.P.word[pos], found = G.orbOrder.filter(r => picksRows().has(r)).map(r => G.P.grid[r][G.P.sol[r]]);
+  const lockedSame = [...SP.locked].filter(k => G.P.word[k] === ch).length;
+  return found.filter(x => x === ch).length > lockedSame ? ECON.cost.placeKnown : ECON.cost.placeUnknown;
+}
+function placeLabel(){
+  if (finalGift()) return "Place a letter · free";
+  if (G.paidPlace) return `Place a letter · ${G.paidPlace} ready`;
+  return SP && SP.mode === "final" ? `Place a letter · ✦${ECON.cost.placeFinal}` : `Place a letter · ✦${ECON.cost.placeKnown}/${ECON.cost.placeUnknown}`;
+}
 function placeArm(){
   SP.placing = true; $("sPlace").classList.add("pulse"); $("sPlace").textContent = "Cancel";
   $("sMsg").style.color = "#E3D9FF";
-  $("sMsg").textContent = SP.mode === "final"
-    ? "Tap any letter and I'll put it in its right place. It uses up the perfect bonus. Changed your mind? Tap Cancel."
-    : "Tap any empty box and I'll fill in its letter. Your rune is safe, but the perfect bonus is used up. Changed your mind? Tap Cancel.";
+  $("sMsg").textContent = finalGift()
+    ? "You finished the grid, so this one is on the house: tap any letter and I'll put it in its right place. No bonus lost."
+    : G.paidPlace ? `Tap where your next letter should go. ${G.paidPlace} paid letter${G.paidPlace > 1 ? "s" : ""} ready.`
+    : SP.mode === "final"
+    ? `Tap any letter and I'll put it in its right place for ✦${ECON.cost.placeFinal}. It ends the perfect bonus. Changed your mind? Tap Cancel.`
+    : `Tap an empty box and I'll fill in its letter: ✦${ECON.cost.placeKnown} if you've found that letter, ✦${ECON.cost.placeUnknown} if you haven't. Your rune is safe, but the perfect bonus ends. Tap Cancel to stop.`;
   if (SP.mode !== "final") $("sSlots").classList.add("picking");
 }
 function placeStart(){
   if (SP.placing){ placeCancel(); return; }
   if (SP.locked.size >= N - 1) return;
-  if ((G.places || 0) > 0 && !G.paidPlace){
-    const mode = SP.mode;
-    // a watched ad stays banked until it is used, so cancelling never wastes it
-    watchAd("place", () => { G.paidPlace = true; openSpell(mode, true); placeArm(); }, () => openSpell(mode, true));
-    return;
-  }
   placeArm();
 }
 function placeCancel(){
@@ -1939,23 +1971,37 @@ function placeCancel(){
   $("sMsg").style.color = ""; $("sMsg").textContent = "";
   SFX.poof();
 }
+// settle the price of one placement, then run apply(); falls back to an ad (2 letters) when moondust runs short
+function placePay(cost, apply){
+  if (finalGift()){ G.finalGift = true; return apply(); }
+  if (G.paidPlace){ G.paidPlace--; G.helped = true; return apply(); }
+  if (inv.dust >= cost){ inv.dust -= cost; G.helped = true; saveAll(); return apply(); }
+  const mode = SP.mode;
+  openSheet(`<h2>Not enough moondust</h2><p>Placing this letter costs <b>✦${cost}</b> and you have ✦${inv.dust}. Watch a short ad to place <b>2 letters</b> instead.</p>
+    <button class="btn gold" id="ppAd">Watch ad for 2 letters</button><button class="btn" id="ppNo">Back</button>`, true);
+  $("ppAd").onclick = () => watchAd("place", () => { G.paidPlace = 2; openSpell(mode, true); placeArm(); }, () => openSpell(mode, true));
+  $("ppNo").onclick = () => openSpell(mode, true);
+}
 function placeDone(){
-  SP.placing = false; G.places = (G.places || 0) + 1; G.helped = true; G.paidPlace = false;
+  SP.placing = false;
   $("sPlace").classList.remove("pulse"); $("sPlace").innerHTML = placeLabel(); $("sSlots").classList.remove("picking");
   $("sMsg").style.color = ""; $("sMsg").textContent = "";
-  SFX.pick(); spellRender();
+  SFX.pick(); spellRender(); renderChipsNow();
 }
 function spellPlaceSlot(pos){
   if (SP.locked.has(pos)) return;
-  spellLock(pos); placeDone();
-  if (!SP.slots.includes(null)) setTimeout(spellSubmit, 300);
+  placePay(placeCost(pos), () => {
+    spellLock(pos); placeDone();
+    if (!SP.slots.includes(null)) setTimeout(spellSubmit, 300);
+  });
 }
 function spellPlace(tile){
   const ch = SP.tiles[tile];
   const pos = [...Array(N).keys()].find(k => !SP.locked.has(k) && G.P.word[k] === ch);
   if (pos === undefined) return;
-  spellClear(); spellLock(pos, tile); placeDone();
+  placePay(ECON.cost.placeFinal, () => { spellClear(); spellLock(pos, tile); placeDone(); });
 }
+const renderChipsNow = () => { const d = $("mapDust"); if (d) d.textContent = inv.dust; };
 // tap a letter you typed to take it back out (placed and revealed letters are correct, so they stay)
 function spellUntype(pos){
   if (SP.locked.has(pos) || !SP.slots[pos]) return;
@@ -1973,6 +2019,14 @@ function spellRender(){
   const S = $("sSlots"); if (!S) return;
   [...S.children].forEach((s, k) => { s.textContent = SP.slots[k] || ""; s.className = SP.locked.has(k) ? "f lock" : SP.slots[k] ? "f" : ""; });
   if (SP.mode === "final"){ const used = new Set(SP.tileOf.filter(t => t !== null)); [...$("sTiles").children].forEach((b, k) => b.disabled = used.has(k)); }
+  else {
+    // a found letter dims once it is sitting in a box (counting repeats), so it's clear what's left to place
+    const inBox = {}; SP.slots.forEach(ch => { if (ch) inBox[ch] = (inBox[ch] || 0) + 1; });
+    const left = Object.assign({}, inBox);
+    document.querySelectorAll("#sheet .found b").forEach(b => { const ch = b.textContent; if (left[ch] > 0){ left[ch]--; b.classList.add("used"); } else b.classList.remove("used"); });
+    const have = {}; document.querySelectorAll("#sheet .found b").forEach(b => { const ch = b.textContent; have[ch] = (have[ch] || 0) + 1; });
+    document.querySelectorAll("#kb button[data-ch]").forEach(k => { const ch = k.dataset.ch; k.classList.toggle("have", !!have[ch] && (inBox[ch] || 0) < have[ch]); });
+  }
 }
 function spellSubmit(){
   const P = G.P, guess = SP.slots.join("");
@@ -2013,6 +2067,7 @@ function spellSubmit(){
   const S = $("sSlots"); S.classList.remove("bad"); void S.offsetWidth; S.classList.add("bad"); SFX.wrong();
   if (SP.mode === "final"){
     $("sMsg").textContent = "Not quite. Read the riddle again.";
+    G.wrongFinal = (G.wrongFinal || 0) + 1; castOffer();
     setTimeout(() => { spellClear(); spellRender(); }, 450);
     return;
   }
@@ -2025,7 +2080,6 @@ function spellReveal(){
   const pos = [...Array(N).keys()].find(k => !SP.locked.has(k));
   if (pos === undefined || SP.locked.size >= N - 1) return;
   if (!pay("reveal")){ closeSheet(); watchAd("reveal", () => openSpell("final"), () => openSpell("final")); return; }
-  $("sRevN").innerHTML = priceTag("reveal", "#2A1640");
   spellClear();
   spellLock(pos);
   spellRender();
@@ -2147,7 +2201,7 @@ function win(o){
     vaultNews = `<p style="font-size:13px">Riddle Vault ${blockOf(P)}: ᚱ ${runesIn(blockOf(P))}/${RUNES_PER_VAULT}. Guess a word with ${RUNE_HIDDEN}+ letters still unfound to earn a rune.</p>`;
   }
   const perfect = G.lockedPerfect !== undefined ? G.lockedPerfect : !G.mistakes && !G.helped;
-  const heartPts = G.replay ? 0 : addHearts(P, G.lives);
+  const heartPts = G.replay || G.cast ? 0 : addHearts(P, G.lives);
   if (o.rune) store.set("runeAt", Date.now());
   const rungs = o.rune && P.kind === "level" ? ladderCheck() : [];
   const nRunes = Object.values(runes).filter(Boolean).length;
@@ -2170,7 +2224,7 @@ function win(o){
   const vaultOpenNow = o.rune && P.kind === "level" && runesIn(blockOf(P)) >= RUNES_PER_VAULT && VAULTS[blockOf(P)-1] && !done[VAULTS[blockOf(P)-1].id] && !store.get("vaultsShown", []).includes(blockOf(P));
   if (vaultOpenNow) store.set("vaultsShown", store.get("vaultsShown", []).concat(blockOf(P)));
   const celebrate = {doneIdx: cur, vaultIdx: vaultOpenNow ? SEQ.indexOf(VAULTS[blockOf(P)-1]) : -1};
-  const title = P.kind === "tut" ? (P.id === "T1" ? `You cast ${P.word}!` : "Lesson complete!") : P.kind === "vault" ? "Vault opened!" : P.tier === "boss" ? "Boss defeated!" : o.early ? "Guessed it early!" : "Spell complete!";
+  const title = P.kind === "tut" ? (P.id === "T1" ? `You cast ${P.word}!` : "Lesson complete!") : o.cast ? "The spell cast itself" : P.kind === "vault" ? "Vault opened!" : P.tier === "boss" ? "Boss defeated!" : o.early ? "Guessed it early!" : "Spell complete!";
   const msg = P.id === "T1" ? "Every puzzle hides a word like this. Next: guessing early." : P.id === "T2" ? "You're ready. The real spells begin at Level 1." : `“${P.clue}”`;
   openSheet(`
     <h2>${title}</h2>
@@ -2180,6 +2234,7 @@ function win(o){
     ${gained ? `<span class="rune" style="border-color:var(--gold)"><i style="background:radial-gradient(circle at 35% 30%,#FFF1C4,var(--gold) 60%,#C08A33)">✦</i>+${gained} moondust</span><p style="font-size:13px">${earn.map(e => `${e[0]} ${e[1]}`).join(" · ")} · you have ${inv.dust}</p>` : ""}
     ${P.kind === "vault" && !perfect ? `<p style="font-size:13px">A perfect vault (no mistakes, no help) pays ${ECON.earn.vaultPerfect}.</p>` : ""}
     ${P.kind === "level" && !o.rune && !G.replay ? `<p class="missrune">This level's rune has passed. Each level offers its rune once, and runes awaken epic companions.</p>` : ""}
+    ${o.cast ? `<p class="missrune">Solve the riddle yourself next time for the full reward.</p>` : ""}
     ${vaultNews}
     ${woke.map(a => `<div class="rungwin awake"><span class="avmini row" style="width:54px;height:54px">${a.svg()}</span><b>${keepName(a.name)} awakened!</b><span>Tap Avatar on the tree to travel together.</span></div>`).join("")}
     ${rungs.map(m => `<div class="rungwin"><b>${m.title}!</b><span>${m.n} runes reached · +${giftText(m)}</span></div>`).join("")}
@@ -2205,7 +2260,7 @@ function outOfLives(){
 }
 let adTimer = null;
 function watchAd(kind, then, onCancel){
-  const what = kind === "hint" ? "+1 hint" : kind === "reveal" ? "+1 reveal" : kind === "place" ? "one more letter placed for you" : "+1 heart";
+  const what = kind === "hint" ? "+1 hint" : kind === "reveal" ? "+2 reveals" : kind === "place" ? "2 letters placed for you" : kind === "cast" ? "the word, and the level cleared" : "+1 heart";
   openSheet(`<h2>Watch an ad</h2><p>A short ad would play here. You get ${what}.</p>
     <div class="adbox" role="timer" aria-live="polite"><b id="adN">3</b>seconds</div>
     <button class="btn" id="adSkip">Cancel</button>`, true);
@@ -2215,7 +2270,7 @@ function watchAd(kind, then, onCancel){
     n--; const el = $("adN"); if (el) el.textContent = n;
     if (n <= 0){
       clearInterval(t); $("modal").hidden = true;
-      if (kind === "hint") inv.hints++; else if (kind === "reveal") inv.revs++; else if (kind === "place") {} else { G.lives = 1; renderHearts(); }
+      if (kind === "hint") inv.hints++; else if (kind === "reveal") inv.revs += 2; else if (kind === "place" || kind === "cast") {} else { G.lives = 1; renderHearts(); }
       if (G && kind !== "life") G.helped = true;
       store.set("lastAdAt", Date.now()); saveAll(); if (G) render(); if (then) then();
     }
