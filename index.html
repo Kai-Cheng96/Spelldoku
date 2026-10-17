@@ -375,16 +375,18 @@ body.hasbanner .screen{padding-bottom:calc(74px + env(safe-area-inset-bottom,0px
 @keyframes glow{0%,100%{box-shadow:0 0 0 1px var(--gold),0 0 8px rgba(245,198,106,.25)}50%{box-shadow:0 0 0 1px var(--gold),0 0 24px rgba(245,198,106,.6)}}
 .card.glow{animation:glow 2.4s ease-in-out infinite}
 .card.tappable{cursor:pointer}
-.card.tappable::after{content:"Tap the riddle to guess ›";align-self:flex-end;margin-top:2px;font-size:11px;font-weight:700;color:#C9B6FF;opacity:.85}
+.card.tappable::after{content:"Tap the riddle to solve it ›";align-self:flex-end;margin-top:2px;font-size:11px;font-weight:700;color:#C9B6FF;opacity:.85}
 .card.ping{animation:ping 2.4s ease-out}
 .card.ping #clbl{color:#FFE7A8}
 @keyframes ping{0%{box-shadow:0 0 0 2px #FFD978,0 0 30px rgba(255,217,120,.9);transform:scale(1.035)}25%{transform:scale(1)}100%{box-shadow:0 0 0 1px rgba(245,198,106,.45),0 0 0 rgba(255,217,120,0)}}
-.rintro{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:6px 0 4px}
+.rfly{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:24px;background:rgba(8,5,20,.78);cursor:pointer}
+.rbox{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;max-width:360px;transform-origin:center}
 .rlabel{font-size:12px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--gold2)}
-.rclue{margin:0;font-family:var(--display);font-size:25px;line-height:1.3;color:#FFF3D6;text-wrap:balance}
+.rclue{margin:0;width:fit-content;max-width:100%;text-align:left;font-weight:800;font-size:27px;line-height:1.3;color:#FFF3D6;text-wrap:balance;text-shadow:0 0 24px rgba(255,217,120,.35)}
 .rboxes{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
-.rboxes i{width:30px;height:36px;border-radius:8px;border:2px dashed rgba(201,182,255,.5);background:rgba(255,255,255,.04)}
-.rnote{margin:0;font-size:14px;color:#D9CCF5;line-height:1.45}
+.rboxes i{width:28px;height:34px;border-radius:8px;border:2px dashed rgba(201,182,255,.5);background:rgba(255,255,255,.04)}
+.card.await .ctext,.card.await .clbl,.card.await::after{opacity:0}
+.card .ctext,.card .clbl{transition:opacity .35s}
 .clbl{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;font-weight:900;letter-spacing:.13em;text-transform:uppercase;color:var(--gold)}
 .yt{font-size:11px;letter-spacing:0;text-transform:none;color:#2A1640;background:var(--gold2);border-radius:8px;padding:0 8px}
 .ctext{font-weight:800;font-size:17px;line-height:1.3;text-wrap:balance}
@@ -443,6 +445,9 @@ body.hasbanner .screen{padding-bottom:calc(74px + env(safe-area-inset-bottom,0px
 .castlink{width:100%;padding:9px 12px;border:1px dashed rgba(255,158,192,.55);border-radius:14px;background:transparent;color:#FFD0E0;font:600 14px var(--body);display:flex;align-items:center;justify-content:center;gap:7px}
 .castlink b{font-weight:800}
 .castlink.nudge{border-style:solid;background:rgba(255,127,168,.1);animation:glow 1.6s ease-in-out 3}
+.tname{width:100%;height:50px;border-radius:14px;border:1.5px solid rgba(201,182,255,.5);background:rgba(255,255,255,.06);color:#fff;font:700 17px var(--body);padding:0 14px;text-align:center}
+.tname:focus{outline:none;border-color:var(--gold2)}
+.tname.bad{border-color:#FF7FA8}
 .practised{font-size:13px;color:#E3D9FF;margin:0}
 #hintBtn.pulse{animation:glow 1.4s ease-in-out infinite}
 .row{display:flex;gap:8px;flex-wrap:wrap}
@@ -726,13 +731,13 @@ body.hasbanner .screen{padding-bottom:calc(74px + env(safe-area-inset-bottom,0px
       <div class="crystal" id="orb" role="img" aria-label="Letters collected"><div class="ring" id="ring"></div><div class="orbcount" id="orbcount"></div></div>
       <div class="runeseal" id="runeSeal" hidden aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2 L20 6.5 V17.5 L12 22 L4 17.5 V6.5 Z" fill="url(#runeStone)" stroke="#E3D9FF" stroke-width="1"/><path d="M9.5 7 V17 M9.5 7 L14 9.5 L9.5 12 L14.5 17" stroke="#FFFFFF" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><i class="crack" aria-hidden="true"></i></div>
       <div class="orbside">
-        <button class="guessbtn" id="guessBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFD978" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20L15 9"/><path d="M17 3l.9 2.3 2.3.9-2.3.9L17 9.4l-.9-2.3-2.3-.9 2.3-.9z"/></svg>GUESS THE WORD</button>
-        <small id="orbtip">Solved letters fly into the orb, jumbled. Guess the word early to earn a rune.</small>
+        <button class="guessbtn" id="guessBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFD978" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20L15 9"/><path d="M17 3l.9 2.3 2.3.9-2.3.9L17 9.4l-.9-2.3-2.3-.9 2.3-.9z"/></svg>SOLVE THE RIDDLE</button>
+        <small id="orbtip">Solved letters fly into the orb, jumbled. Solve the riddle early to earn a rune.</small>
       </div>
     </div>
     <div class="runealert" id="runeAlert" hidden role="status" aria-live="polite">
       <div class="ra-stone" aria-hidden="true"><span class="ra-ring"></span><svg viewBox="0 0 24 24"><path d="M12 2 L20 6.5 V17.5 L12 22 L4 17.5 V6.5 Z" fill="url(#runeStone)" stroke="#E3D9FF" stroke-width="1"/><path d="M9.5 7 V17 M9.5 7 L14 9.5 L9.5 12 L14.5 17" stroke="#FFFFFF" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-      <div class="ra-text"><b id="raTitle">Rune on the line</b><span id="raSub">Guess the word now to keep it. Your next letter makes it fade.</span></div>
+      <div class="ra-text"><b id="raTitle">Rune on the line</b><span id="raSub">Solve the riddle now to keep it. Your next letter makes it fade.</span></div>
     </div>
     <div class="tray" id="tray" aria-label="Your word so far"></div>
     <div class="tip" id="tip">Tap to cross out · double-tap to pick · drag to cross out many</div>
@@ -1006,7 +1011,8 @@ const TRACK = (() => {
     addEventListener("pagehide", () => { ev("session_end", {last_level: lastLevel, minutes: +((Date.now() - t0) / 60000).toFixed(1)}); send(true); });
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") send(true); });
   }
-  return {ev, on};
+  const setTester = name => { ls("tester", name); firstSent = false; ev("tester_named", {tester: name}); send(); };
+  return {ev, on, setTester, tester: () => ls("tester")};
 })();
 const track = TRACK.ev;
 // the level fields every event carries
@@ -1312,7 +1318,7 @@ function renderMap(){
     b.onclick = () => {
       SFX.ui();
       if (open) startLevel(i);
-      else if (L.kind === "vault") toast(`Earn ${RUNES_PER_VAULT} runes in levels ${vaultBlock(L)*5-4}–${vaultBlock(L)*5} to open this vault. Guess a word while ${RUNE_HIDDEN}+ of its letters are still unfound to earn a rune.`);
+      else if (L.kind === "vault") toast(`Earn ${RUNES_PER_VAULT} runes in levels ${vaultBlock(L)*5-4}–${vaultBlock(L)*5} to open this vault. Solve a riddle while ${RUNE_HIDDEN}+ of its letters are still unfound to earn a rune.`);
       else if (!reduced()) b.animate([{transform:"translateX(-5px)"},{transform:"translateX(5px)"},{transform:"translateX(0)"}],{duration:250});
     };
     row.appendChild(b); P.appendChild(row);
@@ -1614,11 +1620,11 @@ function guidePages(){
     {kind: "hearts", icon: ICON.heart, title: "Hearts", pip: "Careful picks keep your hearts, and I count every one for Heart Ranks.",
      body: `You get <b>3 hearts</b> per level. A wrong pick or a wrong word guess costs one. Run out and you can start again, or watch a short ad for one more. Hearts you keep on a first clear count on <b>Heart Ranks</b>, and the top 3 each day win hints and reveals.`},
     {kind: "runes", icon: ICON.rune, title: "Runes", pip: "Every level is your one shot at its rune. Think before you finish the grid!",
-     body: `Guess the word while <b>${RUNE_HIDDEN} or more letters</b> are still unfound to earn a <b>rune</b>.<span class="gpts"><span><b>One chance per level.</b> Once a level is cleared its rune is gone, and replays never give runes.</span><span><b>Runes awaken epic companions.</b> Archmage Pip needs every rune in Book I.</span><span><b>Gifts and titles</b> at 10, 25, 50, 75 and 100 runes, and a place on Rune Ranks.</span></span>`},
+     body: `Solve the riddle while <b>${RUNE_HIDDEN} or more letters</b> are still unfound to earn a <b>rune</b>.<span class="gpts"><span><b>One chance per level.</b> Once a level is cleared its rune is gone, and replays never give runes.</span><span><b>Runes awaken epic companions.</b> Archmage Pip needs every rune in Book I.</span><span><b>Gifts and titles</b> at 10, 25, 50, 75 and 100 runes, and a place on Rune Ranks.</span></span>`},
     {kind: "vault", icon: vaultSVG("open", false), title: "Riddle Vaults", pip: "Two runes and the vault door swings open. What's inside is worth the climb.",
      body: `Every 5 levels guard a <b>Riddle Vault</b>. Earn <b>${RUNES_PER_VAULT} runes</b> in those 5 levels and it opens on the tree. Vaults are harder than any boss and pay the most moondust: <b>✦${E.vault}</b> to clear, <b>✦${E.vaultPerfect}</b> for a perfect clear.`},
     {kind: "dust", icon: ICON.moon, title: "Moondust", pip: "Moondust buys hints. Save it for the grids that really have you stuck.",
-     body: `You earn moondust every level: <b>${E.clear}</b> for a clear, <b>+${E.perfect}</b> for a perfect grid, <b>+${E.early}</b> for an early guess, <b>+${E.boss}</b> for a boss. Spend it on hints (<b>✦${C.hint}</b>) and reveals (<b>✦${C.reveal}</b>). Visit every day for your login streak: day 7 brings 3 free hints.`},
+     body: `You earn moondust every level: <b>${E.clear}</b> for a clear, <b>+${E.perfect}</b> for a perfect grid, <b>+${E.early}</b> for an early solve, <b>+${E.boss}</b> for a boss. Spend it on hints (<b>✦${C.hint}</b>) and reveals (<b>✦${C.reveal}</b>). Visit every day for your login streak: day 7 brings 3 free hints.`},
     {kind: "guide", icon: ICON.hint, title: "When you're stuck", pip: "Every grid can be solved by logic alone. A hint just shows you the next step.",
      body: `Remember, the word is the goal and the grid is your <b>free hint</b>: solve a few more cells and new letters fly into the orb at no cost. <b>Hint</b> (✦${C.hint}) shows the next logical step; <b>Reveal</b> (✦${C.reveal}) solves a cell. On the guess screen, <b>Place a letter</b> puts a letter in its spot: ✦${C.placeKnown} for a letter you've found, ✦${C.placeUnknown} for one you haven't. Finish the grid and one placement is free, then ✦${C.placeFinal} each. Out of moondust? One short ad places 2 letters, and if you're truly stuck, <b>Cast it for me</b> solves the word for one ad.`},
   ];
@@ -1682,7 +1688,7 @@ function runeWatch(){
     G.runeWarned = true;
     $("runeSeal").hidden = false; $("runeSeal").classList.remove("fade");
     $("guessBtn").classList.add("pulse");
-    runeAlert("Rune on the line", "Guess the word now to keep it. Your next letter makes it fade."); buzz("warn");
+    runeAlert("Rune on the line", "Solve the riddle now to keep it. Your next letter makes it fade."); buzz("warn");
     SFX.bell(1319, .04, 0, 1.4); SFX.bell(1976, .03, .12, 1.6); hiss(.5, .01, 3000, 9000, .1);
   } else if (unfound === RUNE_HIDDEN - 1 && G.runeWarned && !G.runeLost){
     G.runeLost = true; track("rune_faded", lvlProps());
@@ -1712,30 +1718,44 @@ function startLevel(idx){
   if (P.id === "T1") $("orbtip").textContent = "Solved letters fly into the orb, jumbled. Finish the grid, then unscramble them.";
   else if (P.kind === "level"){
     const k = blockOf(P), have = Math.min(runesIn(k), RUNES_PER_VAULT), v = VAULTS[k-1];
-    $("orbtip").innerHTML = v && done[v.id] ? `Guess the word with ${RUNE_HIDDEN}+ letters unfound to earn a rune.` : have >= RUNES_PER_VAULT ? `Guess the word with ${RUNE_HIDDEN}+ letters unfound to earn a rune.` : `Guess with ${RUNE_HIDDEN}+ letters unfound for a rune. <b style="color:#E3D9FF">Vault ${k}: ᚱ ${have}/${RUNES_PER_VAULT}</b>`;
-  } else $("orbtip").textContent = P.kind === "vault" ? "Harder than any boss. No runes here, but a perfect vault pays ✦" + ECON.earn.vaultPerfect + "." : `Letters fly into the orb, jumbled. Guess the word with ${RUNE_HIDDEN}+ letters unfound to earn a rune.`;
+    $("orbtip").innerHTML = v && done[v.id] ? `Solve the riddle with ${RUNE_HIDDEN}+ letters unfound to earn a rune.` : have >= RUNES_PER_VAULT ? `Solve the riddle with ${RUNE_HIDDEN}+ letters unfound to earn a rune.` : `Solve it with ${RUNE_HIDDEN}+ letters unfound for a rune. <b style="color:#E3D9FF">Vault ${k}: ᚱ ${have}/${RUNES_PER_VAULT}</b>`;
+  } else $("orbtip").textContent = P.kind === "vault" ? "Harder than any boss. No runes here, but a perfect vault pays ✦" + ECON.earn.vaultPerfect + "." : `Letters fly into the orb, jumbled. Solve the riddle with ${RUNE_HIDDEN}+ letters unfound to earn a rune.`;
   if (G.replay) $("orbtip").innerHTML = `<b style="color:#E3D9FF">Replay</b>: play it for fun. Runes, moondust and leaderboard hearts only come from a first clear.`;
   buildBoard(); renderHearts(); render();
   track(P.kind === "tut" ? "lesson_start" : "level_start", lvlProps());
   if (G.tut) tutRender();
   else setCard(P.kind === "vault" ? `Vault riddle · ${N} letters` : `Riddle · ${N} letters`, P.clue, P.kind === "vault" ? `Perfect vault: ✦${ECON.earn.vaultPerfect} moondust` : "");
   $("card").classList.toggle("tappable", !G.tut && G.orb);
-  if (!G.tut && G.orb) setTimeout(() => { if (G && G.P === P && !G.won && $("modal").hidden) riddleIntro(); }, 350);
+  if (!G.tut && G.orb) setTimeout(() => { if (G && G.P === P && !G.won && $("modal").hidden) riddleIntro(); }, 250);
 }
 /* ---------- riddle first: every level opens on its riddle; the grid is where you go for clues ---------- */
 function riddleIntro(){
-  const P = G.P, runeOK = P.kind === "level" && !G.replay;
-  track("riddle_intro", lvlProps());
-  openSheet(`<div class="rintro">
-      <span class="rlabel">${P.kind === "vault" ? "Vault riddle" : "Riddle"} · ${N} letters</span>
-      <p class="rclue">“${P.clue}”</p>
-      <div class="rboxes">${[...Array(N)].map(() => "<i></i>").join("")}</div>
-      <p class="rnote">${runeOK ? `Know it already? Guess now and earn this level's <b>rune</b>.` : `Know it already? Guess now and skip the grid.`} Not sure? Solve the grid: every letter you find is a clue.</p>
-    </div>
-    <button class="btn gold" id="riGuess">I know it, guess now</button>
-    <button class="btn" id="riGrid">Find clues in the grid</button>`, true);
-  $("riGuess").onclick = () => { track("riddle_intro_choice", Object.assign(lvlProps(), {choice: "guess"})); closeSheet(); openSpell("early"); };
-  $("riGrid").onclick = () => { track("riddle_intro_choice", Object.assign(lvlProps(), {choice: "grid"})); closeSheet(); };
+  // the riddle appears large in the middle, holds a moment, then floats up into its card. A tap skips ahead.
+  const P = G.P, g0 = G, card = $("card"), target = $("ctext");
+  if (reduced() || !target) return;
+  card.classList.add("await");
+  const ov = document.createElement("div"); ov.className = "rfly";
+  ov.innerHTML = `<div class="rbox"><span class="rlabel">${P.kind === "vault" ? "Vault riddle" : "Riddle"} · ${N} letters</span><p class="rclue">${P.clue}</p><div class="rboxes">${[...Array(N)].map(() => "<i></i>").join("")}</div></div>`;
+  document.body.appendChild(ov);
+  const box = ov.querySelector(".rbox"), clueEl = box.querySelector(".rclue");
+  { const rg = document.createRange(); rg.selectNodeContents(clueEl); const w = Math.max(...[...rg.getClientRects()].map(r => r.width)); if (w > 0) clueEl.style.width = Math.ceil(w) + 2 + "px"; }   // shrink-wrap the lines so the block sits centred
+  box.animate([{opacity: 0, transform: "translateY(14px) scale(.96)"}, {opacity: 1, transform: "none"}], {duration: 450, easing: "cubic-bezier(.2,.9,.3,1)", fill: "both"});
+  SFX.bell(1319, .03, .05, 1.4);
+  let gone = false;
+  const fly = () => {
+    if (gone) return; gone = true; clearTimeout(t);
+    if (G !== g0){ ov.remove(); card.classList.remove("await"); return; }
+    const clue = box.querySelector(".rclue"), a = clue.getBoundingClientRect(), b = target.getBoundingClientRect();
+    const s = parseFloat(getComputedStyle(target).fontSize) / parseFloat(getComputedStyle(clue).fontSize), dx = b.left - a.left, dy = b.top - a.top;
+    box.querySelectorAll(".rlabel,.rboxes").forEach(el => el.animate([{opacity: 1}, {opacity: 0}], {duration: 220, fill: "forwards"}));
+    clue.style.transformOrigin = "0 0";
+    clue.animate([{transform: "none", opacity: 1}, {transform: `translate(${dx}px, ${dy}px) scale(${s})`, opacity: 1, offset: .88}, {transform: `translate(${dx}px, ${dy}px) scale(${s})`, opacity: 0}],
+      {duration: 720, easing: "cubic-bezier(.5,0,.2,1)", fill: "forwards"});
+    ov.animate([{backgroundColor: "rgba(8,5,20,.78)"}, {backgroundColor: "rgba(8,5,20,0)"}], {duration: 650, fill: "forwards"});
+    setTimeout(() => { ov.remove(); card.classList.remove("await"); card.classList.remove("ping"); void card.offsetWidth; card.classList.add("ping"); setTimeout(() => card.classList.remove("ping"), 2400); }, 620);
+  };
+  const t = setTimeout(fly, 2600);
+  ov.onclick = fly;
 }
 // each new letter sends the eye back to the riddle
 function riddlePing(){
@@ -2001,7 +2021,7 @@ function openSpell(mode, keep){
   }
   SP.placing = false;
   const kb = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
-  const title = mode === "final" ? "Cast the spell" : "Guess the word";
+  const title = mode === "final" ? "Cast the spell" : "Solve the riddle";
   const runeOK = P.kind === "level" && !G.replay && N - rows.size >= RUNE_HIDDEN;
   const lead = mode === "final" ? "Put the orb's letters in order to solve the riddle." :
     P.kind === "vault" ? "Vaults give no runes, but a right guess counts. A wrong guess costs a heart." :
@@ -2274,7 +2294,7 @@ function showHint(){
   const s = s0;
   if (s.kind === "stuck"){
     G.hint = null; $("hlbl").textContent = "Pip says";
-    $("htext").innerHTML = G.orb ? "Every letter is in the orb. Tap Guess the word to unscramble it." : "Logic can't take you further. Solve the riddle, or use Reveal for a letter.";
+    $("htext").innerHTML = G.orb ? "Every letter is in the orb. Tap Solve the riddle to unscramble it." : "Logic can't take you further. Solve the riddle, or use Reveal for a letter.";
     $("hApply").hidden = true; $("hintbox").hidden = false; render(); return;
   }
   G.hint = s;
@@ -2303,9 +2323,9 @@ const INTROS = {
   T1: ["Hi, I'm <b>Pip</b>! Every puzzle hides a magic word. Let's find one together.",
        "The rules: pick exactly <b>one letter</b> in every row, every column and every coloured region.",
        "Picks can never <b>touch</b>, not even corner to corner. Tap once to cross out a letter. Double-tap to pick it."],
-  T2: ["In Spelldoku, <b>guessing the word is the goal</b>. The grid is your free hint: every letter you solve on it is a clue that costs no moondust.",
+  T2: ["In Spelldoku, <b>solving the riddle is the goal</b>. The grid is your free hint: every letter you solve on it is a clue that costs no moondust.",
        "Each letter you pick flies into the <b>orb</b>, jumbled up.",
-       "Guess the word while <b>3 or more letters</b> are still unfound and you earn a <b>rune</b>. Each level gives only <b>one chance</b> at its rune, so choose your moment!",
+       "Solve the riddle while <b>3 or more letters</b> are still unfound and you earn a <b>rune</b>. Each level gives only <b>one chance</b> at its rune, so choose your moment!",
        "Runes open secret <b>Riddle Vaults</b> on the tree, which pay the most <b>moondust</b>. Moondust buys hints. I'll explain it all after this lesson!"]
 };
 function tutRender(){
@@ -2316,7 +2336,7 @@ function tutRender(){
   if (T.phase === "spell" || G.won) return;
   if (P.id === "T2" && !T.offered && picksRows().size >= 3){
     T.phase = "offer"; T.offered = true; G.hint = null; render();
-    setCard("Pip", "Three letters in the orb! Read the riddle. Can you guess the whole word already? Tap <b>Guess the word</b> to try for a rune.", sub);
+    setCard("Pip", "Three letters in the orb! Read the riddle. Can you solve the riddle already? Tap <b>Solve the riddle</b> to try for a rune.", sub);
     $("guessBtn").classList.add("pulse");
     return;
   }
@@ -2385,7 +2405,7 @@ function win(o){
     if (v && !done[v.id]) vaultNews = have >= RUNES_PER_VAULT ? (store.get("vaultsShown", []).includes(k) ? "" : `<p><b style="color:#E3D9FF">Riddle Vault ${k} is open!</b></p>`) : `<p>Riddle Vault ${k}: ${have}/${RUNES_PER_VAULT} runes.</p>`;
   } else if (G.replay){ vaultNews = `<p style="font-size:13px">Replay complete. Replays are just for fun: no runes or moondust.</p>`;
   } else if (P.kind === "level" && VAULTS[blockOf(P)-1] && !done[VAULTS[blockOf(P)-1].id] && runesIn(blockOf(P)) < RUNES_PER_VAULT){
-    vaultNews = `<p style="font-size:13px">Riddle Vault ${blockOf(P)}: ᚱ ${runesIn(blockOf(P))}/${RUNES_PER_VAULT}. Guess a word with ${RUNE_HIDDEN}+ letters still unfound to earn a rune.</p>`;
+    vaultNews = `<p style="font-size:13px">Riddle Vault ${blockOf(P)}: ᚱ ${runesIn(blockOf(P))}/${RUNES_PER_VAULT}. Solve a riddle with ${RUNE_HIDDEN}+ letters still unfound to earn a rune.</p>`;
   }
   const perfect = G.lockedPerfect !== undefined ? G.lockedPerfect : !G.mistakes && !G.helped;
   const heartPts = G.replay || G.cast ? 0 : addHearts(P, G.lives);
@@ -2399,7 +2419,7 @@ function win(o){
   else if (P.kind === "level"){
     earn.push(["Cleared", ECON.earn.clear]);
     if (P.tier === "boss") earn.push(["Boss", ECON.earn.boss]);
-    if (o.rune) earn.push(["Early guess", ECON.earn.early]);
+    if (o.rune) earn.push(["Early solve", ECON.earn.early]);
     if (perfect) earn.push(["Perfect", ECON.earn.perfect]);
   } else if (P.kind === "vault") earn.push(perfect ? ["Perfect vault", ECON.earn.vaultPerfect] : ["Vault cleared", ECON.earn.vault]);
   const gained = earn.reduce((a, e) => a + e[1], 0);
@@ -2411,7 +2431,7 @@ function win(o){
   const vaultOpenNow = o.rune && P.kind === "level" && runesIn(blockOf(P)) >= RUNES_PER_VAULT && VAULTS[blockOf(P)-1] && !done[VAULTS[blockOf(P)-1].id] && !store.get("vaultsShown", []).includes(blockOf(P));
   if (vaultOpenNow) store.set("vaultsShown", store.get("vaultsShown", []).concat(blockOf(P)));
   const celebrate = {doneIdx: cur, vaultIdx: vaultOpenNow ? SEQ.indexOf(VAULTS[blockOf(P)-1]) : -1};
-  const title = P.kind === "tut" ? (P.id === "T1" ? `You cast ${P.word}!` : "Lesson complete!") : o.cast ? "The spell cast itself" : P.kind === "vault" ? "Vault opened!" : P.tier === "boss" ? "Boss defeated!" : o.early ? "Guessed it early!" : "Spell complete!";
+  const title = P.kind === "tut" ? (P.id === "T1" ? `You cast ${P.word}!` : "Lesson complete!") : o.cast ? "The spell cast itself" : P.kind === "vault" ? "Vault opened!" : P.tier === "boss" ? "Boss defeated!" : o.early ? "Solved it early!" : "Spell complete!";
   const msg = P.id === "T1" ? "Every puzzle hides a word like this. Next: guessing early." : P.id === "T2" ? "You're ready. The real spells begin at Level 1." : `“${P.clue}”`;
   openSheet(`
     <h2>${title}</h2>
@@ -2505,8 +2525,8 @@ function rulesSheet(){
     : `You have <b>${G.lives} of ${MAX_LIVES}</b>. A <b>wrong pick</b> on the grid or a <b>wrong word guess</b> costs one. Out of hearts, start again or watch an ad for one more.`;
   openSheet(`${dropTitle("How this level works")}
     <div class="rules">
-      <div class="rl"><i>★</i><p><b class="t">The goal</b>Solve the riddle. The grid is your <b>free hint</b>: each letter you pick flies into the orb, jumbled. Tap <b>Guess the word</b> whenever you think you know it.</p></div>
-      <div class="rl"><i>ᚱ</i><p><b class="t">The rune</b>${vault ? "Vaults give no rune. A perfect vault (no mistakes, no help) pays ✦" + ECON.earn.vaultPerfect + "." : `Guess the word while <b>${RUNE_HIDDEN} or more</b> letters are still unfound and you earn this level's rune. Each level offers it <b>once</b>: find one letter too many and it fades for good.`}<br>${runeNow}</p></div>
+      <div class="rl"><i>★</i><p><b class="t">The goal</b>Solve the riddle. The grid is your <b>free hint</b>: each letter you pick flies into the orb, jumbled. Tap <b>Solve the riddle</b> whenever you think you know it.</p></div>
+      <div class="rl"><i>ᚱ</i><p><b class="t">The rune</b>${vault ? "Vaults give no rune. A perfect vault (no mistakes, no help) pays ✦" + ECON.earn.vaultPerfect + "." : `Solve the riddle while <b>${RUNE_HIDDEN} or more</b> letters are still unfound and you earn this level's rune. Each level offers it <b>once</b>: find one letter too many and it fades for good.`}<br>${runeNow}</p></div>
       <div class="rl"><i style="color:#FF7FA8">♥</i><p><b class="t">Hearts</b>${hearts}</p></div>
       <div class="rl"><i>✦</i><p><b class="t">Moondust · you have ${inv.dust}</b>Grid: <b>Hint ✦${C.hint}</b> shows the next logical step, <b>Reveal ✦${C.reveal}</b> solves a cell. Guess screen: place a letter for <b>✦${C.placeKnown}</b> (found) or <b>✦${C.placeUnknown}</b> (not found yet). Out of moondust? A short ad helps instead.</p></div>
       <div class="rl"><i>⌖</i><p><b class="t">Grid rules</b>One pick in every row, column and coloured region. Picks never touch, not even corner to corner. Tap to cross out, double-tap to pick.</p></div>
@@ -2873,7 +2893,7 @@ function lbRender(tab){
     : !LB.ready ? "Gathering the wizards…" : "";
   const sub = R ? `The quickest minds on the tree. A rune is a word guessed while ${RUNE_HIDDEN} or more of its letters are still hidden.`
                 : `Today's steadiest climbers. Every first clear adds the hearts you kept, and vaults count double.`;
-  const yourLine = R ? (me.score ? `You hold <b>${me.score} rune${me.score > 1 ? "s" : ""}</b>, rank <b>#${myRank}</b>.` : "Guess a word early to earn your first rune.")
+  const yourLine = R ? (me.score ? `You hold <b>${me.score} rune${me.score > 1 ? "s" : ""}</b>, rank <b>#${myRank}</b>.` : "Solve a riddle early to earn your first rune.")
                      : (me.score ? `You've kept <b>${me.score} heart${me.score > 1 ? "s" : ""}</b> today, rank <b>#${myRank}</b>.` : "Clear a new level today to join the board.");
   openSheet(`${emblem(R ? "runes" : "hearts", icon)}
     ${dropTitle(R ? "Rune Ranks" : "Heart Ranks")}
@@ -3018,7 +3038,19 @@ const bannerWatch = new MutationObserver(updateBanner);
 if (store.get("vaultsShown", null) === null)
   store.set("vaultsShown", VAULTS.map((v, k) => k + 1).filter(k => runesIn(k) >= RUNES_PER_VAULT));
 showMap();
-if (!store.get("avatar", null) && !done.T1) setTimeout(() => { if ($("modal").hidden) avatarSheet(true); }, 700);
+// tester build only: ask the playtester's name once, so their session can be matched to their video
+function testerPrompt(then){
+  openSheet(`${dropTitle("Welcome, playtester!")}
+    <p class="ssub">Type your name or tester username so your play session can be matched to your video. You'll only be asked once.</p>
+    <input id="tName" class="tname" maxlength="40" autocomplete="off" autocapitalize="words" placeholder="Your name" aria-label="Your name">
+    <button class="btn gold" id="tGo">Start</button>`, true);
+  const go = () => { const v = $("tName").value.trim(); if (!v){ $("tName").focus(); $("tName").classList.add("bad"); return; } TRACK.setTester(v); SFX.ui(); closeSheet(); then(); };
+  $("tGo").onclick = go; $("tName").onkeydown = e => { if (e.key === "Enter") go(); };
+  setTimeout(() => $("tName").focus(), 300);
+}
+const firstRun = () => { if (!store.get("avatar", null) && !done.T1) avatarSheet(true); };
+if (SHOWCASE && window.SPELLDOKU_PH && !TRACK.tester()) setTimeout(() => { if ($("modal").hidden) testerPrompt(firstRun); }, 700);
+else if (!store.get("avatar", null) && !done.T1) setTimeout(() => { if ($("modal").hidden) avatarSheet(true); }, 700);
 updateBanner(); updateStreakBtn(); updateNoAdsBtn(); updateAvBtn();
 track("app_open", {first_open: !done.T1, levels_done: Object.keys(done).length, runes: Object.values(runes).filter(Boolean).length, dust: inv.dust});
 
