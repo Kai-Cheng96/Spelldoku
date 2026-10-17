@@ -2178,12 +2178,23 @@ const renderChipsNow = () => { const d = $("mapDust"); if (d) d.textContent = in
 // tap a letter you typed to take it back out (placed and revealed letters are correct, so they stay)
 function spellUntype(pos){
   if (SP.locked.has(pos) || !SP.slots[pos]) return;
-  SP.slots[pos] = null; SP.tileOf[pos] = null; SFX.type(); spellRender();
+  SP.slots[pos] = null; SP.tileOf[pos] = null; SP.cur = Math.min(SP.cur || 0, pos); if (SP.passed) [...SP.passed].forEach(k => { if (k >= pos) SP.passed.delete(k); }); SFX.type(); spellRender();
 }
-function spellClear(){ for (let k = 0; k < N; k++) if (!SP.locked.has(k)){ SP.slots[k] = null; SP.tileOf[k] = null; } }
-function spellDelete(){ for (let k = N - 1; k >= 0; k--) if (!SP.locked.has(k) && SP.slots[k]){ SP.slots[k] = null; SP.tileOf[k] = null; break; } spellRender(); }
+function spellClear(){ for (let k = 0; k < N; k++) if (!SP.locked.has(k)){ SP.slots[k] = null; SP.tileOf[k] = null; } SP.cur = 0; SP.passed = new Set(); }
+function spellDelete(){
+  let k = N - 1; for (; k >= 0; k--) if (!SP.locked.has(k) && SP.slots[k]){ SP.slots[k] = null; SP.tileOf[k] = null; break; }
+  SP.cur = Math.max(0, k); if (SP.passed) [...SP.passed].forEach(j => { if (j >= SP.cur) SP.passed.delete(j); }); spellRender(); }
 function spellType(x){
-  const idx = SP.slots.findIndex(v => v === null); if (idx < 0) return;
+  // players type the whole word, including letters already placed for them: typing a placed letter in its turn just steps past it
+  if (SP.mode !== "final"){
+    SP.cur = SP.cur || 0;
+    while (SP.cur < N && SP.slots[SP.cur] !== null){
+      if (SP.locked.has(SP.cur) && SP.slots[SP.cur] === x && !SP.passed?.has(SP.cur)){ (SP.passed = SP.passed || new Set()).add(SP.cur); SP.cur++; SFX.type(); spellRender(); if (!SP.slots.includes(null)) setTimeout(spellSubmit, 180); return; }
+      SP.cur++;
+    }
+  }
+  const idx = SP.mode !== "final" && SP.cur < N && SP.slots[SP.cur] === null ? SP.cur : SP.slots.findIndex(v => v === null); if (idx < 0) return;
+  if (SP.mode !== "final") SP.cur = idx + 1;
   if (SP.mode === "final"){ SP.slots[idx] = SP.tiles[x]; SP.tileOf[idx] = x; } else SP.slots[idx] = x;
   SFX.type(); spellRender();
   if (!SP.slots.includes(null)) setTimeout(spellSubmit, 180);
