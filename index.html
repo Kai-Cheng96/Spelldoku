@@ -21,6 +21,8 @@ body{margin:0;font:14px system-ui,-apple-system,sans-serif;overscroll-behavior-y
 img{max-width:100%}
 [hidden]{display:none!important}
 </style>
+<script>window.SPELLDOKU_PH = {key: "phc_D7qory8TF5w8EAmATUyHHmbt3fuRjzerqFFeMqnNrUWo", host: "https://eu.i.posthog.com"};</script>
+<link rel="preconnect" href="https://eu.i.posthog.com">
 <script>window.SPELLDOKU_APP = true;window.SPELLDOKU_SHOWCASE = true;</script>
 </head>
 <body>
@@ -349,6 +351,8 @@ body.hasbanner .screen{padding-bottom:calc(74px + env(safe-area-inset-bottom,0px
 .rules .now.ok{background:rgba(124,224,168,.18);color:#9EF0C2}
 .rules .now.gone{background:rgba(255,255,255,.08);color:#B3A8D6}
 .lessons{display:flex;flex-direction:column;gap:9px;width:100%}
+.btn:has(.btnsub){flex-direction:column;gap:0}
+.btn .btnsub{display:block;font-family:var(--body);font-size:12px;font-weight:600;opacity:.75;margin-top:2px}
 .lessons .btn small{display:block;font-size:12px;font-weight:600;opacity:.75;margin-top:2px}
 .lvl{font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:.06em;color:var(--gold2);text-align:center}
 .hearts{display:flex;gap:3px}
@@ -421,6 +425,12 @@ body.hasbanner .screen{padding-bottom:calc(74px + env(safe-area-inset-bottom,0px
 .hintbox{background:var(--card);border:1.5px solid var(--gold2);border-radius:16px;padding:11px 14px;display:flex;flex-direction:column;gap:8px;animation:pop .3s ease-out}
 .hintbox .lbl{font-size:11px;font-weight:900;letter-spacing:.13em;text-transform:uppercase;color:var(--gold2)}
 .hintbox p{margin:0;font-weight:700;line-height:1.45}
+.tech{display:inline-block;margin:0 0 6px;padding:2px 10px;border-radius:99px;background:rgba(126,99,214,.35);color:#E3D9FF;font-size:12.5px;font-weight:800;letter-spacing:.02em}
+.tech.new{background:linear-gradient(90deg,rgba(255,217,120,.3),rgba(126,99,214,.4));color:#FFF1C4;box-shadow:0 0 12px rgba(255,217,120,.35)}
+.tech.new b{color:#FFD978}
+.techtip{display:block;margin:0 0 8px;padding:7px 10px;border-left:3px solid var(--gold2);border-radius:0 10px 10px 0;background:rgba(255,217,120,.08);font-size:13.5px;font-weight:600;color:#F3E8C8}
+.practised{font-size:13px;color:#E3D9FF;margin:0}
+#hintBtn.pulse{animation:glow 1.4s ease-in-out infinite}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 .tray{display:grid;gap:5px;padding:9px;border-radius:14px;background:#1D1440;border:1px solid rgba(245,198,106,.35)}
 .slot{height:40px;border-radius:8px;border:1px dashed rgba(191,176,255,.45);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:clamp(15px,4.6vw,21px);min-width:0}
@@ -952,6 +962,41 @@ const store = {
   get(k, d){ try { const v = JSON.parse(localStorage.getItem("sd2-"+k)); return v === null ? d : v; } catch(e){ return d; } },
   set(k, v){ try { localStorage.setItem("sd2-"+k, JSON.stringify(v)); } catch(e){} }
 };
+
+/* ---------- playtest analytics (PostHog, EU). Only the stand-alone phone app sends anything; the Claude preview never does. ---------- */
+const TRACK = (() => {
+  const cfg = window.SPELLDOKU_PH, on = !!(cfg && window.SPELLDOKU_APP && /^https:/.test(location.protocol));
+  let q = [], uid = null, t0 = Date.now(), sid = Date.now().toString(36) + Math.random().toString(36).slice(2, 7), lastLevel = null, firstSent = false;
+  const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem("sd2-" + k); localStorage.setItem("sd2-" + k, v); } catch (e) { return null; } };
+  if (on){
+    uid = ls("uid"); if (!uid){ uid = "p_" + Math.random().toString(36).slice(2, 12); ls("uid", uid); }
+    const t = new URLSearchParams(location.search).get("t"); if (t) ls("tester", t.slice(0, 40));   // ?t=alex tags a tester so their timeline matches their video
+  }
+  const send = beacon => {
+    if (!on || !q.length) return;
+    const body = JSON.stringify({api_key: cfg.key, batch: q}); q = [];
+    try { if (beacon && navigator.sendBeacon) navigator.sendBeacon(cfg.host + "/batch/", new Blob([body], {type: "text/plain"}));
+          else fetch(cfg.host + "/batch/", {method: "POST", body, keepalive: true, headers: {"Content-Type": "text/plain"}}).catch(() => {}); } catch (e) {}
+  };
+  const ev = (event, props) => {
+    if (!on) return;
+    if (props && props.level) lastLevel = props.level;
+    const p = Object.assign({distinct_id: uid, $session_id: sid, build: window.SPELLDOKU_SHOWCASE ? "tester" : "app", tester: ls("tester") || "unknown", $current_url: location.origin + location.pathname,
+      standalone: !!(window.matchMedia && matchMedia("(display-mode: standalone)").matches) || !!navigator.standalone, mins_in_session: +((Date.now() - t0) / 60000).toFixed(1)}, props || {});
+    if (!firstSent){ firstSent = true; p.$set = {tester: ls("tester") || "unknown"}; }
+    q.push({event, properties: p, timestamp: new Date().toISOString()});
+    if (q.length >= 10) send();
+  };
+  if (on){
+    setInterval(() => send(), 5000);
+    addEventListener("pagehide", () => { ev("session_end", {last_level: lastLevel, minutes: +((Date.now() - t0) / 60000).toFixed(1)}); send(true); });
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") send(true); });
+  }
+  return {ev, on};
+})();
+const track = TRACK.ev;
+// the level fields every event carries
+const lvlProps = () => G ? {level: G.P.id, kind: G.P.kind, tier: G.P.tier || null, replay: !!G.replay, letters_found: picksRows().size, letters_total: N, hearts: G.lives, secs: Math.round((Date.now() - G.t0) / 1000)} : {};
 const MAX_LIVES = 3, RUNES_PER_VAULT = 2, RUNE_HIDDEN = 3;   // a rune needs the word guessed with 3+ letters still unfound
 // the whole economy in one table, so it can be tuned after testing
 const ECON = {
@@ -1626,7 +1671,7 @@ function runeWatch(){
     runeAlert("Rune on the line", "Guess the word now to keep it. Your next letter makes it fade."); buzz("warn");
     SFX.bell(1319, .04, 0, 1.4); SFX.bell(1976, .03, .12, 1.6); hiss(.5, .01, 3000, 9000, .1);
   } else if (unfound === RUNE_HIDDEN - 1 && G.runeWarned && !G.runeLost){
-    G.runeLost = true;
+    G.runeLost = true; track("rune_faded", lvlProps());
     const seal = $("runeSeal"); seal.classList.add("fade");
     setTimeout(() => { seal.hidden = true; seal.classList.remove("fade"); }, reduced() ? 0 : 1800);
     runeAlert("The rune faded", "Too many letters are found now. You can still solve the riddle and clear the level.", true);
@@ -1657,6 +1702,7 @@ function startLevel(idx){
   } else $("orbtip").textContent = P.kind === "vault" ? "Harder than any boss. No runes here, but a perfect vault pays ✦" + ECON.earn.vaultPerfect + "." : `Letters fly into the orb, jumbled. Guess the word with ${RUNE_HIDDEN}+ letters unfound to earn a rune.`;
   if (G.replay) $("orbtip").innerHTML = `<b style="color:#E3D9FF">Replay</b>: play it for fun. Runes, moondust and leaderboard hearts only come from a first clear.`;
   buildBoard(); renderHearts(); render();
+  track(P.kind === "tut" ? "lesson_start" : "level_start", lvlProps());
   if (G.tut) tutRender();
   else setCard(P.kind === "vault" ? `Vault riddle · ${N} letters` : `Riddle · ${N} letters`, P.clue, P.kind === "vault" ? `Perfect vault: ✦${ECON.earn.vaultPerfect} moondust` : "");
 }
@@ -1853,6 +1899,7 @@ function tryPick(i, opts){
   if (P.sol[r] !== c){
     const el = cellEl(i); el.classList.remove("wrong"); void el.offsetWidth; el.classList.add("wrong");
     G.marks[i] = 1; SFX.wrong(); poof(i, "cross"); G.mistakes = (G.mistakes || 0) + 1;
+    track("wrong_pick", Object.assign(lvlProps(), {free: !!(G.bonus || G.tut), row: r + 1}));
     if (G.bonus){ render(); return; }
     if (G.tut){ setCard("Pip", "Not that one. Look again: one pick per row, column and region, and no touching.", P.id === "T2" ? `Riddle: ${P.clue}` : ""); render(); return; }
     G.lives--; renderHearts(G.lives); render();
@@ -1958,7 +2005,7 @@ function openSpell(mode, keep){
 function castOffer(){ const b = $("sCast"); if (b && G && SP && SP.mode === "final" && ((G.wrongFinal || 0) > 0 || G.castWaited)) b.hidden = false; }
 function castSpell(){
   watchAd("cast", () => {
-    G.cast = true; G.helped = true; G.lockedPerfect = undefined;
+    G.cast = true; G.helped = true; G.lockedPerfect = undefined; track("cast_for_me", lvlProps());
     for (let k = 0; k < N; k++) SP.slots[k] = G.P.word[k];
     SFX.win(); win({cast: true});
   }, () => openSpell("final", true));
@@ -2015,9 +2062,10 @@ function placeCancel(){
 }
 // settle the price of one placement, then run apply(); falls back to an ad (2 letters) when moondust runs short
 function placePay(cost, apply){
-  if (finalGift()){ G.finalGift = true; return apply(); }
-  if (G.paidPlace){ G.paidPlace--; G.helped = true; return apply(); }
-  if (inv.dust >= cost){ inv.dust -= cost; G.helped = true; saveAll(); return apply(); }
+  const tp = how => track("letter_placed", Object.assign(lvlProps(), {mode: SP.mode, paid_with: how, cost}));
+  if (finalGift()){ G.finalGift = true; tp("free_gift"); return apply(); }
+  if (G.paidPlace){ G.paidPlace--; G.helped = true; tp("ad_credit"); return apply(); }
+  if (inv.dust >= cost){ inv.dust -= cost; G.helped = true; saveAll(); tp("moondust"); return apply(); }
   const mode = SP.mode;
   openSheet(`<h2>Not enough moondust</h2><p>Placing this letter costs <b>✦${cost}</b> and you have ✦${inv.dust}. Watch a short ad to place <b>2 letters</b> instead.</p>
     <button class="btn gold" id="ppAd">Watch ad for 2 letters</button><button class="btn" id="ppNo">Back</button>`, true);
@@ -2072,6 +2120,7 @@ function spellRender(){
 }
 function spellSubmit(){
   const P = G.P, guess = SP.slots.join("");
+  track("word_guess", Object.assign(lvlProps(), {correct: guess === P.word, mode: SP.mode, unfound: N - picksRows().size, guess}));
   if (guess === P.word){
     const mode = SP.mode; closeSheet();
     if (mode === "early"){
@@ -2087,17 +2136,22 @@ function spellSubmit(){
         <h2>Spell cast!</h2>
         <div class="word">${P.word.split("").map((ch,k) => `<span style="animation-delay:${k*70}ms">${ch}</span>`).join("")}</div>
         ${runeLine}
-        <p>Your reward is locked in${!G.mistakes && !G.helped ? ", perfect bonus included" : ""}. Want to finish the grid for fun? Hints, reveals and mistakes are all free now.</p>
-        <button class="btn gold" id="mFinish">Finish the grid</button>
-        <button class="btn" id="mAuto">Let the spell finish it</button>`, true);
+        <p>Your reward is locked in${!G.mistakes && !G.helped ? ", perfect bonus included" : ""}.${P.kind === "tut" ? " Want to finish the grid for fun? Hints, reveals and mistakes are all free now." : ""}</p>
+        ${P.kind === "tut"   // the lesson keeps the grid first: finishing it is how players learn
+          ? `<button class="btn gold" id="mFinish">Finish the grid</button><button class="btn" id="mAuto">Let the spell finish it</button>`
+          : `<button class="btn gold" id="mAuto">Claim and continue</button><button class="btn" id="mFinish">Finish the grid for practice<small class="btnsub">Learn new techniques with free hints</small></button>`}`, true);
       $("mFinish").onclick = () => {
+        track("after_guess_choice", Object.assign(lvlProps(), {choice: "finish_grid"}));
         closeSheet(); G.bonus = true;
         $("guessBtn").hidden = true;
-        $("orbtip").innerHTML = `The word is <b style="color:#FFD978">${P.word}</b>. Your reward is locked in. Finish the grid for fun: hints, reveals and mistakes are free.`;
+        $("orbtip").innerHTML = P.kind === "tut" ? `The word is <b style="color:#FFD978">${P.word}</b>. Your reward is locked in. Finish the grid for fun: hints, reveals and mistakes are free.`
+          : `<b style="color:#FFD978">Practice mode.</b> Hints are free: tap <b>Hint</b> to learn the trick behind each move. Mistakes cost nothing.`;
+        const hb = $("hintBtn"); hb.classList.add("pulse"); setTimeout(() => hb.classList.remove("pulse"), 4800);
         if (G.tut) { G.tut.phase = "bonus"; setCard("Pip", `You cast <b>${P.word}</b>! Now finish the grid at your own pace. Mistakes are free.`, `Riddle: ${P.clue}`); $("actions").hidden = false; }
         render();
       };
       $("mAuto").onclick = () => {
+        track("after_guess_choice", Object.assign(lvlProps(), {choice: "claim"}));
         closeSheet();
         const rest = [...Array(N).keys()].filter(r => !picksRows().has(r)).map(r => r*N + P.sol[r]);
         rest.forEach((i, k) => setTimeout(() => { if (G && !G.won){ G.marks[i] = 0; tryPick(i, {silent: true}); } }, reduced() ? 0 : 140*k));
@@ -2154,10 +2208,26 @@ function pay(kind){
 
 /* ---------- hints & reveals ---------- */
 function closeHint(){ if (!G) return; G.hint = null; $("hintbox").hidden = true; }
+/* ---------- techniques: every hint names the trick it uses, so players see themselves learning ---------- */
+const TECH = {
+  tidy:    {name: "Clear around a pick", tip: "Every pick wipes out its row, its column, its region and the cells touching it."},
+  single:  {name: "Last open cell", tip: "When a row, column or region has only one open cell left, that cell must be a pick."},
+  squeeze: {name: "Squeeze", tip: "If a region's open cells all sit in one row or column, nothing else in that line can be a pick. Two regions squeezed into two rows work the same way."},
+  whatif:  {name: "What if?", tip: "Imagine picking a cell. If it would leave a row, column or region with nowhere to go, it can't be a pick."},
+  guess:   {name: "Use your word", tip: "Once you know which letter a row needs, the other letters in that row are out."}
+};
+function techLabel(kind){
+  const t = TECH[kind]; if (!t) return "";
+  if (G){ G.techs = G.techs || new Set(); G.techs.add(kind); }
+  const seen = store.get("techSeen", []), fresh = !seen.includes(kind);
+  if (fresh){ store.set("techSeen", seen.concat(kind)); track("technique_learned", Object.assign(lvlProps(), {technique: kind})); }
+  return `<span class="tech${fresh ? " new" : ""}">${fresh ? "<b>New technique!</b> " : ""}${t.name}</span>${fresh ? `<span class="techtip">${t.tip}</span>` : ""}`;
+}
 function showHint(){
   if (!G || G.won || (G.tut && G.tut.phase !== "bonus")) return;
   const s0 = solverStep(G.P, G.marks, "");
   if (s0.kind !== "stuck" && !G.bonus && !pay("hint")){ watchAd("hint", showHint); return; }
+  track("hint_used", Object.assign(lvlProps(), {hint_kind: s0.kind, free: !!G.bonus}));
   const s = s0;
   if (s.kind === "stuck"){
     G.hint = null; $("hlbl").textContent = "Pip says";
@@ -2165,8 +2235,8 @@ function showHint(){
     $("hApply").hidden = true; $("hintbox").hidden = false; render(); return;
   }
   G.hint = s;
-  $("hlbl").textContent = s.kind === "mistake" ? "Oops" : "Hint";
-  $("htext").innerHTML = s.text; $("hApply").hidden = !s.act; $("hintbox").hidden = false; render();
+  $("hlbl").textContent = s.kind === "mistake" ? "Oops" : G.bonus ? "Free hint" : "Hint";
+  $("htext").innerHTML = techLabel(s.kind) + s.text; $("hApply").hidden = !s.act; $("hintbox").hidden = false; render();
 }
 function applyHint(){
   const s = G.hint; if (!s || !s.act) return;
@@ -2181,7 +2251,7 @@ function reveal(){
   const P = G.P;
   for (let r=0;r<N;r++){
     const i = r*N + P.sol[r];
-    if (G.marks[i] !== 2){ if (!G.bonus && !pay("reveal")){ watchAd("reveal", reveal); return; } G.marks[i] = 0; tryPick(i, {reveal: true}); return; }
+    if (G.marks[i] !== 2){ if (!G.bonus && !pay("reveal")){ watchAd("reveal", reveal); return; } track("reveal_used", Object.assign(lvlProps(), {free: !!G.bonus})); G.marks[i] = 0; tryPick(i, {reveal: true}); return; }
   }
 }
 
@@ -2231,6 +2301,7 @@ function win(o){
   if (G.won) return;
   if (G.P.kind === "vault" && !o.epicDone){ G.won = true; closeSheet(); vaultEpic(G.P, () => { G.won = false; win(Object.assign({}, o, {epicDone: true})); }); return; }
   G.won = true; done[G.P.id] = true;
+  track(G.P.kind === "tut" ? "lesson_complete" : "level_clear", Object.assign(lvlProps(), {rune: !!o.rune, early: !!(o.early || G.early), cast: !!o.cast, mistakes: G.mistakes || 0, helped: !!G.helped}));
   const P = G.P, cur = SEQ.indexOf(P);
   let vaultNews = "";
   if (G.replay) o = Object.assign({}, o, {rune: false});
@@ -2277,6 +2348,7 @@ function win(o){
     ${P.kind === "vault" && !perfect ? `<p style="font-size:13px">A perfect vault (no mistakes, no help) pays ${ECON.earn.vaultPerfect}.</p>` : ""}
     ${P.kind === "level" && !o.rune && !G.replay ? `<p class="missrune">This level's rune has passed. Each level offers its rune once, and runes awaken epic companions.</p>` : ""}
     ${o.cast ? `<p class="missrune">Solve the riddle yourself next time for the full reward.</p>` : ""}
+    ${G.bonus && G.techs && G.techs.size && P.kind !== "tut" ? `<p class="practised">Techniques practised: ${[...G.techs].map(k => `<b>${TECH[k].name}</b>`).join(", ")}</p>` : ""}
     ${vaultNews}
     ${woke.map(a => `<div class="rungwin awake"><span class="avmini row" style="width:54px;height:54px">${a.svg()}</span><b>${keepName(a.name)} awakened!</b><span>Tap Avatar on the tree to travel together.</span></div>`).join("")}
     ${rungs.map(m => `<div class="rungwin"><b>${m.title}!</b><span>${m.n} runes reached · +${giftText(m)}</span></div>`).join("")}
@@ -2291,6 +2363,7 @@ function win(o){
   };
 }
 function outOfLives(){
+  track("out_of_hearts", lvlProps());
   openSheet(`
     <div style="width:110px;height:100px" aria-hidden="true">${curAvatar().id === "pip" ? PIP_BALL.replace('class="curled"','') : AV_STAND().replace('class="stand"','')}</div>
     <h2>Out of hearts</h2>
@@ -2311,13 +2384,13 @@ function watchAd(kind, then, onCancel){
   const t = adTimer = setInterval(() => {
     n--; const el = $("adN"); if (el) el.textContent = n;
     if (n <= 0){
-      clearInterval(t); $("modal").hidden = true;
+      clearInterval(t); $("modal").hidden = true; track("ad_watched", Object.assign(lvlProps(), {ad_for: kind}));
       if (kind === "hint") inv.hints++; else if (kind === "reveal") inv.revs += 2; else if (kind === "place" || kind === "cast") {} else { G.lives = 1; renderHearts(); }
       if (G && kind !== "life") G.helped = true;
       store.set("lastAdAt", Date.now()); saveAll(); if (G) render(); if (then) then();
     }
   }, 1000);
-  $("adSkip").onclick = () => { clearInterval(t); closeSheet(); if (kind === "life") outOfLives(); else if (onCancel) onCancel(); };
+  $("adSkip").onclick = () => { clearInterval(t); track("ad_cancelled", Object.assign(lvlProps(), {ad_for: kind})); closeSheet(); if (kind === "life") outOfLives(); else if (onCancel) onCancel(); };
 }
 function openSheet(html, locked){
   const ra = document.getElementById("runeAlert"); if (ra) ra.hidden = true;
@@ -2340,7 +2413,7 @@ function lessonsSheet(fromLevel){
       <button class="btn" id="lsT2">Lesson 2<small>Guessing early, the orb and runes</small></button>
       <button class="btn gold" id="lsBack">${fromLevel ? "Back to the level" : "Done"}</button>
     </div>`);
-  const go = id => () => { SFX.ui(); startLevel(SEQ.findIndex(p => p.id === id)); };
+  const go = id => () => { SFX.ui(); track("lesson_replay", {lesson: id, from_level: !!fromLevel}); startLevel(SEQ.findIndex(p => p.id === id)); };
   $("lsT1").onclick = go("T1"); $("lsT2").onclick = go("T2");
   $("lsBack").onclick = () => fromLevel ? rulesSheet() : closeSheet();
 }
@@ -2369,7 +2442,7 @@ function rulesSheet(){
   $("rLessons").onclick = () => lessonsSheet(true);
   $("rOk").onclick = closeSheet;
 }
-$("rulesBtn").onclick = () => { SFX.ui(); rulesSheet(); };
+$("rulesBtn").onclick = () => { SFX.ui(); track("rules_opened", lvlProps()); rulesSheet(); };
 
 /* ---------- settings ---------- */
 $("setBtn").onclick = () => {
@@ -2386,13 +2459,13 @@ $("setBtn").onclick = () => {
   $("sAuto").onchange = e => { settings.autoX = e.target.checked; saveAll(); };
   $("sVib").onchange = e => { settings.vibe = e.target.checked; saveAll(); if (settings.vibe) buzz("win"); };
   $("sAll").onchange = e => { settings.unlockAll = e.target.checked; saveAll(); renderMap(); };
-  $("sReset").onclick = () => { ["guideSeen", "vaultIntro", "avatar"].forEach(k => { try { localStorage.removeItem("sd2-" + k); } catch (e) {} }); store.set("vaultsShown", []); done = {}; runes = {}; inv = {hints: ECON.start.hints, revs: 0, dust: ECON.start.dust}; saveAll(); renderMap(); closeSheet(); setTimeout(() => { if ($("modal").hidden) avatarSheet(true); }, 300); };
+  $("sReset").onclick = () => { ["guideSeen", "vaultIntro", "avatar", "techSeen"].forEach(k => { try { localStorage.removeItem("sd2-" + k); } catch (e) {} }); store.set("vaultsShown", []); done = {}; runes = {}; inv = {hints: ECON.start.hints, revs: 0, dust: ECON.start.dust}; saveAll(); renderMap(); closeSheet(); setTimeout(() => { if ($("modal").hidden) avatarSheet(true); }, 300); };
   $("sDone").onclick = closeSheet;
-  $("sGuide").onclick = () => showGuide(true);
+  $("sGuide").onclick = () => { track("guide_opened"); showGuide(true); };
   $("sLessons").onclick = () => lessonsSheet();
 
 };
-$("backBtn").onclick = () => { G = null; showMap(); };
+$("backBtn").onclick = () => { if (G && !G.won) track(G.P.kind === "tut" ? "lesson_quit" : "level_quit", Object.assign(lvlProps(), {word_solved: !!G.wordSolved})); G = null; showMap(); };
 $("hintBtn").onclick = showHint;
 $("revBtn").onclick = reveal;
 $("hApply").onclick = applyHint;
@@ -2578,7 +2651,7 @@ function avatarSheet(first){
     const a = avById(b.dataset.av);
     if (!avatarOpen(a)){ b.animate([{transform: "translateX(-5px)"}, {transform: "translateX(5px)"}, {transform: "none"}], {duration: 240}); return; }
     if (curAvatar().id === a.id) return;
-    store.set("avatar", a.id); SFX.rune(); buzz("pick"); mapDirty = true; avatarSheet(first);
+    store.set("avatar", a.id); track("companion_chosen", {companion: a.id, first_time: !!first}); SFX.rune(); buzz("pick"); mapDirty = true; avatarSheet(first);
     setTimeout(() => { lbSent0(); lbPush(); }, 400);   // the tree and leaderboard catch up after the sheet has answered the tap
   });
   $("avDone").onclick = () => { closeSheet(); };
@@ -2845,7 +2918,7 @@ function removeAdsSheet(){
     <p style="font-size:12px;opacity:.75">Prototype: no payment happens here. This switch just simulates the purchase so you can test both versions.</p>
     <button class="btn gold" id="raBuy">${settings.noAds ? "Turn ads back on (testing)" : "Remove ads · $3.90"}</button>
     <button class="btn" id="raNo">Not now</button>`);
-  $("raBuy").onclick = () => { settings.noAds = !settings.noAds; saveAll(); closeSheet(); updateBanner(); updateNoAdsBtn(); if (settings.noAds){ SFX.rune(); confetti(); } };
+  $("raBuy").onclick = () => { track(settings.noAds ? "ads_turned_back_on" : "remove_ads_tapped_buy"); settings.noAds = !settings.noAds; saveAll(); closeSheet(); updateBanner(); updateNoAdsBtn(); if (settings.noAds){ SFX.rune(); confetti(); } };
   $("raNo").onclick = closeSheet;
 }
 function updateStreakBtn(){
@@ -2861,7 +2934,7 @@ function updateNoAdsBtn(){
   $("naLbl").innerHTML = own ? "Ad-free<br>✓" : "Remove<br>ads";
   $("naBtn").setAttribute("aria-label", own ? "Ads removed" : "Remove ads");
 }
-$("naBtn").onclick = () => { SFX.ui && SFX.ui(); removeAdsSheet(); };
+$("naBtn").onclick = () => { SFX.ui && SFX.ui(); track("remove_ads_opened"); removeAdsSheet(); };
 function updateAvBtn(){ $("avBtnPic").innerHTML = avMini(curAvatar().id); $("avBtn").setAttribute("aria-label", "Companion: " + curAvatar().name); }
 $("avBtn").onclick = () => { SFX.ui && SFX.ui(); avatarSheet(false); };
 const bannerWatch = new MutationObserver(updateBanner);
@@ -2873,6 +2946,7 @@ if (store.get("vaultsShown", null) === null)
 showMap();
 if (!store.get("avatar", null) && !done.T1) setTimeout(() => { if ($("modal").hidden) avatarSheet(true); }, 700);
 updateBanner(); updateStreakBtn(); updateNoAdsBtn(); updateAvBtn();
+track("app_open", {first_open: !done.T1, levels_done: Object.keys(done).length, runes: Object.values(runes).filter(Boolean).length, dust: inv.dust});
 
 </script>
 
