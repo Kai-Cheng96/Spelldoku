@@ -459,8 +459,8 @@ body.hasbanner .screen{padding-bottom:calc(74px + env(safe-area-inset-bottom,0px
 .mg.col i.a{background:var(--r0)} .mg.col i.b{background:var(--r4)}
 .mg i.x::before,.mg i.x::after{content:"";position:absolute;left:2px;right:2px;top:50%;height:2px;margin-top:-1px;background:#FF7FA0;border-radius:1px;transform:rotate(45deg)}
 .mg i.x::after{transform:rotate(-45deg)}
-.mg i.p{background:radial-gradient(circle at 35% 30%,#FFF1C4,var(--gold) 60%,#C08A33);box-shadow:0 0 5px rgba(255,217,120,.8)}
-.mg.col i.p{background:radial-gradient(circle at 35% 30%,#FFF1C4,var(--gold) 60%,#C08A33);box-shadow:0 0 0 2px var(--r0),0 0 6px rgba(255,217,120,.9)}
+.mg i.p{background:radial-gradient(circle at 50% 50%,#FFF1C4 0,var(--gold) 28%,#C08A33 44%,rgba(0,0,0,0) 48%),#3A2E66;filter:drop-shadow(0 0 3px rgba(255,217,120,.7))}
+.mg.col i.p{background:radial-gradient(circle at 50% 50%,#FFF1C4 0,var(--gold) 28%,#C08A33 44%,rgba(0,0,0,0) 48%),var(--r0)}
 @media (max-width:370px){ .rcard b{font-size:10.5px} }
 .practised{font-size:13px;color:#E3D9FF;margin:0}
 #hintBtn.pulse{animation:glow 1.4s ease-in-out infinite}
@@ -733,8 +733,8 @@ body.hasbanner .screen{padding-bottom:calc(74px + env(safe-area-inset-bottom,0px
     </div>
     <div class="board" id="board" role="grid" aria-label="Letter grid"></div>
     <button class="rulestrip" id="ruleStrip" aria-label="The three rules. Tap for how this level works.">
-      <span class="rcard"><span class="mg col"><i class="x a"></i><i class="x a"></i><i class="x a"></i><i class="x a"></i><i class="p a"></i><i class="b"></i><i class="x a"></i><i class="b"></i><i class="b"></i></span><b>1 per colour</b></span>
-      <span class="rcard"><span class="mg"><i class="x"></i><i class="p"></i><i class="x"></i><i></i><i class="x"></i><i></i><i></i><i class="x"></i><i></i></span><b>1 per row &amp; col</b></span>
+      <span class="rcard"><span class="mg col"><i class="x a"></i><i class="x a"></i><i class="x a"></i><i class="p a"></i><i class="b"></i><i class="b"></i><i class="x a"></i><i class="x a"></i><i class="x a"></i></span><b>1 per colour</b></span>
+      <span class="rcard"><span class="mg"><i class="x"></i><i class="p"></i><i class="x"></i><i></i><i class="x"></i><i></i><i></i><i class="x"></i><i></i></span><b>1 per row &amp; column</b></span>
       <span class="rcard"><span class="mg"><i class="x"></i><i class="x"></i><i class="x"></i><i class="x"></i><i class="p"></i><i class="x"></i><i class="x"></i><i class="x"></i><i class="x"></i></span><b>No touching</b></span>
     </button>
     <div class="hintbox" id="hintbox" hidden>
