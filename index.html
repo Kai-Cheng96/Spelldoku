@@ -462,6 +462,7 @@ body.hasbanner .screen{padding-bottom:calc(74px + env(safe-area-inset-bottom,0px
 .mg i.p{background:radial-gradient(circle at 50% 50%,#FFF1C4 0,var(--gold) 28%,#C08A33 44%,rgba(0,0,0,0) 48%),#3A2E66;filter:drop-shadow(0 0 3px rgba(255,217,120,.7))}
 .mg.col i.p{background:radial-gradient(circle at 50% 50%,#FFF1C4 0,var(--gold) 28%,#C08A33 44%,rgba(0,0,0,0) 48%),var(--r0)}
 @media (max-width:370px){ .rcard b{font-size:10.5px} }
+.whystuck{display:block;margin-top:6px;color:#FFE7A8;font-size:13.5px}
 .practised{font-size:13px;color:#E3D9FF;margin:0}
 #hintBtn.pulse{animation:glow 1.4s ease-in-out infinite}
 .row{display:flex;gap:8px;flex-wrap:wrap}
@@ -1982,13 +1983,14 @@ function tryPick(i, opts){
     const el = cellEl(i); el.classList.remove("wrong"); void el.offsetWidth; el.classList.add("wrong");
     G.marks[i] = 1; SFX.wrong(); poof(i, "cross"); G.mistakes = (G.mistakes || 0) + 1;
     track("wrong_pick", Object.assign(lvlProps(), {free: !!(G.bonus || G.tut), row: r + 1}));
-    if (G.bonus){ render(); return; }
+    G.wrongRun = (G.wrongRun || 0) + 1;
+    if (!G.tut){ whyNot(i); if (G.bonus){ render(); return; } }
     if (G.tut){ setCard("Pip", "Not that one. Look again: one pick per row, column and region, and no touching.", P.id === "T2" ? `Riddle: ${P.clue}` : ""); render(); return; }
     G.lives--; renderHearts(G.lives); render();
     if (G.lives <= 0) setTimeout(outOfLives, 450);
     return;
   }
-  G.marks[i] = 2; G.lastNew = r;
+  G.marks[i] = 2; G.lastNew = r; G.wrongRun = 0;
   if (G.orb && !G.anchorDone){
     // the very first letter found drops straight into its place in the word
     const L = P.grid[r][P.sol[r]], pos = P.word.split("").findIndex((ch, k) => ch === L && !(G.lockedSlots || {})[k]);
@@ -2315,10 +2317,10 @@ function techLabel(kind){
   if (fresh){ store.set("techSeen", seen.concat(kind)); track("technique_learned", Object.assign(lvlProps(), {technique: kind})); }
   return `<span class="tech${fresh ? " new" : ""}">${fresh ? "<b>New technique!</b> " : ""}${t.name}</span>${fresh ? `<span class="techtip">${t.tip}</span>` : ""}`;
 }
-function showHint(){
+function showHint(prepaid){
   if (!G || G.won || (G.tut && G.tut.phase !== "bonus")) return;
   const s0 = solverStep(G.P, G.marks, "");
-  if (s0.kind !== "stuck" && !G.bonus && !pay("hint")){ watchAd("hint", showHint); return; }
+  if (s0.kind !== "stuck" && !G.bonus && !prepaid && !pay("hint")){ watchAd("hint", () => showHint()); return; }
   track("hint_used", Object.assign(lvlProps(), {hint_kind: s0.kind, free: !!G.bonus}));
   const s = s0;
   if (s.kind === "stuck"){
@@ -2485,14 +2487,48 @@ function win(o){
     if (!maybeInterstitial(P, back)) back();
   };
 }
+// a wrong pick says why it's wrong: which of your picks rules it out, and by which rule
+function whyNot(i){
+  const P = G.P, ch = P.grid[Math.floor(i / N)][i % N], picks = G.marks.map((m, j) => m === 2 ? j : -1).filter(j => j >= 0);
+  const R = j => Math.floor(j / N), C = j => j % N, reg = j => P.regions[R(j)][C(j)];
+  let why = null;
+  for (const p of picks){
+    const k = R(p) === R(i) ? "row" : C(p) === C(i) ? "col" : reg(p) === reg(i) ? "reg" : (Math.abs(R(p) - R(i)) <= 1 && Math.abs(C(p) - C(i)) <= 1) ? "touch" : null;
+    if (k){ why = {p, k}; break; }
+  }
+  const all = [...Array(N * N).keys()];
+  let text, lit;
+  if (why){
+    const pc = P.grid[R(why.p)][C(why.p)], g = reg(why.p), sw = `<span class="sw" style="background:var(--r${g})"></span>`;
+    text = why.k === "row" ? `That <b>${ch}</b> is in <b>row ${R(i) + 1}</b>, which already has your <b>${pc}</b>. One pick per row.`
+      : why.k === "col" ? `That <b>${ch}</b> is in <b>column ${C(i) + 1}</b>, which already has your <b>${pc}</b>. One pick per column.`
+      : why.k === "reg" ? `That <b>${ch}</b> is in the ${sw}<b>${RNAME[g]}</b> region, which already has your <b>${pc}</b>. One pick per colour.`
+      : `That <b>${ch}</b> touches your <b>${pc}</b>. Picks can never touch, not even corner to corner.`;
+    lit = (why.k === "row" ? all.filter(j => R(j) === R(i)) : why.k === "col" ? all.filter(j => C(j) === C(i)) : why.k === "reg" ? all.filter(j => reg(j) === g) : [i, why.p]).concat(i, why.p);
+  } else {
+    text = `That <b>${ch}</b> isn't part of the solution. Guessing costs hearts: tap <b>Hint</b> to see the next step you can work out.`;
+    lit = null;
+  }
+  if (G.wrongRun >= 2 && !G.bonus){
+    const free = inv.hints > 0 ? `You have <b>${inv.hints} free hint${inv.hints > 1 ? "s" : ""}</b>.` : "";
+    text += ` <span class="whystuck">Stuck? ${free} A hint shows the next logical step.</span>`;
+    $("hintBtn").classList.add("pulse");
+  }
+  G.hint = {cells: [i], focus: why ? [why.p] : [], lit};
+  $("hlbl").textContent = "Why not?"; $("htext").innerHTML = text; $("hApply").hidden = true; $("hintbox").hidden = false;
+  track("why_not_shown", Object.assign(lvlProps(), {rule: why ? why.k : "solution"}));
+}
 function outOfLives(){
   track("out_of_hearts", lvlProps());
   openSheet(`
     <div style="width:110px;height:100px" aria-hidden="true">${curAvatar().id === "pip" ? PIP_BALL.replace('class="curled"','') : AV_STAND().replace('class="stand"','')}</div>
     <h2>Out of hearts</h2>
-    <p>Start this level again, or watch a short ad to get one heart back and keep going.</p>
-    <button class="btn gold" id="mAd"><svg width="12" height="12" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 1l7 4-7 4z" fill="#2A1640"/></svg> Watch ad for a heart</button>
+    <p>A hint shows the next step you can work out, so you stop guessing. It also gives you a heart back.</p>
+    <button class="btn gold" id="mHint">${inv.hints > 0 ? `Use a free hint and keep going<small class="btnsub">${inv.hints} free hint${inv.hints > 1 ? "s" : ""} left</small>` : inv.dust >= ECON.cost.hint ? `Use a hint and keep going<small class="btnsub">✦${ECON.cost.hint} moondust</small>` : `Watch an ad for a hint and a heart`}</button>
+    <button class="btn" id="mAd"><svg width="12" height="12" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 1l7 4-7 4z" fill="currentColor"/></svg> Watch ad for a heart only</button>
     <button class="btn" id="mRetry">Start again</button>`, true);
+  const hintOn = () => { G.lives = 1; renderHearts(); closeSheet(); G.wrongRun = 0; track("out_hint_used", lvlProps()); showHint(true); };
+  $("mHint").onclick = () => { if (pay("hint")) hintOn(); else watchAd("hint", () => { pay("hint"); hintOn(); }, outOfLives); };
   $("mAd").onclick = () => watchAd("life");
   $("mRetry").onclick = () => startLevel(G.idx);
 }
@@ -2590,7 +2626,7 @@ $("setBtn").onclick = () => {
 
 };
 $("backBtn").onclick = () => { if (G && !G.won) track(G.P.kind === "tut" ? "lesson_quit" : "level_quit", Object.assign(lvlProps(), {word_solved: !!G.wordSolved})); G = null; showMap(); };
-$("hintBtn").onclick = showHint;
+$("hintBtn").onclick = () => { $("hintBtn").classList.remove("pulse"); showHint(); };
 $("revBtn").onclick = reveal;
 $("hApply").onclick = applyHint;
 $("hClose").onclick = () => { closeHint(); render(); };
