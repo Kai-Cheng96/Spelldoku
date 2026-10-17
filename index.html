@@ -448,6 +448,20 @@ body.hasbanner .screen{padding-bottom:calc(74px + env(safe-area-inset-bottom,0px
 .tname{width:100%;height:50px;border-radius:14px;border:1.5px solid rgba(201,182,255,.5);background:rgba(255,255,255,.06);color:#fff;font:700 17px var(--body);padding:0 14px;text-align:center}
 .tname:focus{outline:none;border-color:var(--gold2)}
 .tname.bad{border-color:#FF7FA8}
+.withstrip .board{width:min(100%, max(250px, calc(100vh - 560px)))}
+.rulestrip[hidden]{display:none}
+@media (max-height: 760px){ .rulestrip{display:none!important} .withstrip .board{width:min(100%, max(250px, calc(100vh - 430px)))} }
+.rulestrip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%;padding:0;border:0;background:none;margin-top:-2px}
+.rcard{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(201,182,255,.16);text-align:left;min-width:0}
+.rcard b{font-size:11.5px;line-height:1.15;font-weight:800;color:#E3D9FF}
+.mg{flex:none;display:grid;grid-template-columns:repeat(3,12px);gap:2px}
+.mg i{width:12px;height:12px;border-radius:3px;background:#3A2E66;position:relative}
+.mg.col i.a{background:var(--r0)} .mg.col i.b{background:var(--r4)}
+.mg i.x::before,.mg i.x::after{content:"";position:absolute;left:2px;right:2px;top:50%;height:2px;margin-top:-1px;background:#FF7FA0;border-radius:1px;transform:rotate(45deg)}
+.mg i.x::after{transform:rotate(-45deg)}
+.mg i.p{background:radial-gradient(circle at 35% 30%,#FFF1C4,var(--gold) 60%,#C08A33);box-shadow:0 0 5px rgba(255,217,120,.8)}
+.mg.col i.p{background:radial-gradient(circle at 35% 30%,#FFF1C4,var(--gold) 60%,#C08A33);box-shadow:0 0 0 2px var(--r0),0 0 6px rgba(255,217,120,.9)}
+@media (max-width:370px){ .rcard b{font-size:10.5px} }
 .practised{font-size:13px;color:#E3D9FF;margin:0}
 #hintBtn.pulse{animation:glow 1.4s ease-in-out infinite}
 .row{display:flex;gap:8px;flex-wrap:wrap}
@@ -537,7 +551,7 @@ body.hasbanner .screen{padding-bottom:calc(74px + env(safe-area-inset-bottom,0px
 .orbcount{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:15px;color:var(--muted)}
 .orbside{display:flex;flex-direction:column;gap:8px;min-width:0;flex:1}
 .orbside small{font-size:12.5px;font-weight:700;color:var(--muted);line-height:1.35}
-.guessbtn{height:48px;border-radius:14px;border:1px solid var(--gold);background:#2A1D5C;color:var(--gold2);font-family:var(--display);font-weight:800;letter-spacing:.04em;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px}
+.guessbtn{height:48px;border-radius:14px;border:1px solid var(--gold);background:#2A1D5C;color:var(--gold2);font-family:var(--display);font-weight:800;letter-spacing:.02em;font-size:14px;display:flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap;padding:0 10px}
 .guessbtn.pulse{animation:glow 1.6s ease-in-out infinite}
 .fly{position:fixed;z-index:31;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:none;
   font-family:var(--display);font-weight:800;color:#2A1640;background:radial-gradient(circle at 35% 30%,#FFF1C4,var(--gold) 60%,#C08A33);box-shadow:0 0 14px rgba(245,198,106,.7)}
@@ -718,6 +732,11 @@ body.hasbanner .screen{padding-bottom:calc(74px + env(safe-area-inset-bottom,0px
       </div>
     </div>
     <div class="board" id="board" role="grid" aria-label="Letter grid"></div>
+    <button class="rulestrip" id="ruleStrip" aria-label="The three rules. Tap for how this level works.">
+      <span class="rcard"><span class="mg col"><i class="x a"></i><i class="x a"></i><i class="x a"></i><i class="x a"></i><i class="p a"></i><i class="b"></i><i class="x a"></i><i class="b"></i><i class="b"></i></span><b>1 per colour</b></span>
+      <span class="rcard"><span class="mg"><i class="x"></i><i class="p"></i><i class="x"></i><i></i><i class="x"></i><i></i><i></i><i class="x"></i><i></i></span><b>1 per row &amp; col</b></span>
+      <span class="rcard"><span class="mg"><i class="x"></i><i class="x"></i><i class="x"></i><i class="x"></i><i class="p"></i><i class="x"></i><i class="x"></i><i class="x"></i><i class="x"></i></span><b>No touching</b></span>
+    </button>
     <div class="hintbox" id="hintbox" hidden>
       <span class="lbl" id="hlbl">Hint</span>
       <p id="htext"></p>
@@ -1721,6 +1740,7 @@ function startLevel(idx){
     $("orbtip").innerHTML = v && done[v.id] ? `Solve the riddle with ${RUNE_HIDDEN}+ letters unfound to earn a rune.` : have >= RUNES_PER_VAULT ? `Solve the riddle with ${RUNE_HIDDEN}+ letters unfound to earn a rune.` : `Solve it with ${RUNE_HIDDEN}+ letters unfound for a rune. <b style="color:#E3D9FF">Vault ${k}: ᚱ ${have}/${RUNES_PER_VAULT}</b>`;
   } else $("orbtip").textContent = P.kind === "vault" ? "Harder than any boss. No runes here, but a perfect vault pays ✦" + ECON.earn.vaultPerfect + "." : `Letters fly into the orb, jumbled. Solve the riddle with ${RUNE_HIDDEN}+ letters unfound to earn a rune.`;
   if (G.replay) $("orbtip").innerHTML = `<b style="color:#E3D9FF">Replay</b>: play it for fun. Runes, moondust and leaderboard hearts only come from a first clear.`;
+  const strip = N <= 7; $("ruleStrip").hidden = !strip; $("game").classList.toggle("withstrip", strip);   // big 8x8 and 9x9 grids keep every pixel for cells
   buildBoard(); renderHearts(); render();
   track(P.kind === "tut" ? "lesson_start" : "level_start", lvlProps());
   if (G.tut) tutRender();
@@ -2200,9 +2220,7 @@ function spellSubmit(){
         <div class="word">${P.word.split("").map((ch,k) => `<span style="animation-delay:${k*70}ms">${ch}</span>`).join("")}</div>
         ${runeLine}
         <p>Your reward is locked in${!G.mistakes && !G.helped ? ", perfect bonus included" : ""}.${P.kind === "tut" ? " Want to finish the grid for fun? Hints, reveals and mistakes are all free now." : ""}</p>
-        ${P.kind === "tut"   // the lesson keeps the grid first: finishing it is how players learn
-          ? `<button class="btn gold" id="mFinish">Finish the grid</button><button class="btn" id="mAuto">Let the spell finish it</button>`
-          : `<button class="btn gold" id="mAuto">Claim and continue</button><button class="btn" id="mFinish">Finish the grid for practice<small class="btnsub">Learn new techniques with free hints</small></button>`}`, true);
+        <button class="btn gold" id="mAuto">${P.kind === "tut" ? "Let the spell finish it" : "Claim and continue"}</button><button class="btn" id="mFinish">Finish the grid for practice<small class="btnsub">Learn new techniques with free hints</small></button>`, true);
       $("mFinish").onclick = () => {
         track("after_guess_choice", Object.assign(lvlProps(), {choice: "finish_grid"}));
         closeSheet(); G.bonus = true;
@@ -2536,6 +2554,7 @@ function rulesSheet(){
   $("rLessons").onclick = () => lessonsSheet(true);
   $("rOk").onclick = closeSheet;
 }
+$("ruleStrip").onclick = () => { if (!G || (G.tut && G.tut.phase !== "bonus")) return; SFX.ui(); track("rule_strip_tapped", lvlProps()); rulesSheet(); };
 $("rulesBtn").onclick = () => { SFX.ui(); track("rules_opened", lvlProps()); rulesSheet(); };
 
 /* ---------- settings ---------- */
