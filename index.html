@@ -36,6 +36,8 @@ img{max-width:100%}
   color-scheme:dark;
 }
 html,body{height:100%}
+html{touch-action:manipulation}
+button,.node{touch-action:manipulation}
 [hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;-webkit-tap-highlight-color:transparent}
 button{font:inherit;color:inherit;cursor:pointer}
@@ -335,6 +337,19 @@ body.hasbanner .screen{padding-bottom:calc(74px + env(safe-area-inset-bottom,0px
 
 /* ---------- game ---------- */
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;height:48px}
+.lvlwrap{display:flex;align-items:center;gap:8px}
+.qbtn{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--gold2);background:rgba(255,217,120,.1);color:#FFE7A8;font:900 14px/1 var(--body);display:grid;place-items:center;padding:0}
+.qbtn[hidden]{display:none}
+.rules{display:flex;flex-direction:column;gap:9px;width:100%;text-align:left;margin:2px 0 4px}
+.rules .rl{display:flex;gap:11px;align-items:flex-start;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(201,182,255,.18)}
+.rules .rl > i{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:900;font-size:15px;background:#2A1D58;color:#FFE7A8}
+.rules .rl p{margin:0;font-size:14px;line-height:1.42}
+.rules .rl b.t{display:block;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold2);margin-bottom:1px}
+.rules .now{display:inline-block;margin-top:5px;padding:2px 9px;border-radius:99px;font-size:12.5px;font-weight:800;background:rgba(126,99,214,.35);color:#E3D9FF}
+.rules .now.ok{background:rgba(124,224,168,.18);color:#9EF0C2}
+.rules .now.gone{background:rgba(255,255,255,.08);color:#B3A8D6}
+.lessons{display:flex;flex-direction:column;gap:9px;width:100%}
+.lessons .btn small{display:block;font-size:12px;font-weight:600;opacity:.75;margin-top:2px}
 .lvl{font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:.06em;color:var(--gold2);text-align:center}
 .hearts{display:flex;gap:3px}
 .hearts svg{width:24px;height:24px}
@@ -388,6 +403,16 @@ body.hasbanner .screen{padding-bottom:calc(74px + env(safe-area-inset-bottom,0px
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 .cell.foc::before{content:"";position:absolute;inset:4px;border:2px dashed rgba(255,255,255,.75);border-radius:8px;z-index:3;pointer-events:none}
 .board.nudge .cell.tgt{animation:shake .35s ease}
+/* hint spotlight: a pick's row, column, region and neighbours stay lit, and each cell to cross shows why */
+.board .cell{transition:filter .25s}
+.board.spot .cell:not(.lit){filter:brightness(.42) saturate(.6)}
+.cell .why{display:none;position:absolute;top:1px;right:2px;z-index:4;min-width:13px;height:13px;padding:0 2px;border-radius:7px;background:#2A1640;color:#FFE7A8;font:900 10px/13px var(--body);font-style:normal;text-align:center;pointer-events:none;box-shadow:0 0 0 1.5px var(--gold2)}
+.cell .why[data-w=row],.cell .why[data-w=col],.cell .why[data-w=touch]{display:block}
+.cell .why[data-w=reg]{display:block;width:11px;min-width:0;height:11px;top:3px;right:3px;padding:0;border-radius:3px;background:var(--rc);box-shadow:0 0 0 1.5px #fff,0 0 0 3px #2A1640}
+.wchips{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0 6px}
+.wchip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px 3px 6px;border-radius:99px;background:rgba(255,255,255,.08);border:1px solid rgba(255,217,120,.35);font-size:13px;font-weight:700;white-space:nowrap}
+.wchip .sw{margin-right:0}
+.wg{display:inline-block;min-width:15px;height:15px;border-radius:8px;background:#2A1640;color:#FFE7A8;font:900 11px/15px var(--body);font-style:normal;text-align:center;box-shadow:0 0 0 1.5px var(--gold2)}
 
 .banner{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--gold);border-radius:16px;padding:10px 14px;animation:pop .4s ease-out}
 .banner .ic{width:36px;height:36px;flex:none;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FFF1C4,var(--gold) 60%,#C08A33);display:flex;align-items:center;justify-content:center}
@@ -651,7 +676,7 @@ body.hasbanner .screen{padding-bottom:calc(74px + env(safe-area-inset-bottom,0px
   <section class="screen" id="game" hidden aria-label="Puzzle">
     <div class="topbar">
       <button class="iconbtn" id="backBtn" aria-label="Back to level map"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F1EAFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
-      <div class="lvl" id="lvl">Level 1</div>
+      <div class="lvlwrap"><div class="lvl" id="lvl">Level 1</div><button class="qbtn" id="rulesBtn" aria-label="How this level works">?</button></div>
       <div class="hearts" id="hearts" role="img" aria-label="3 lives"></div>
     </div>
     <div class="riddle">
@@ -834,7 +859,16 @@ function solverStep(P, marks, guess){
   // 1. tidy up around existing picks
   for (const p of picks){
     const bl = blockedByP(P, p).filter(j => marks[j]===0);
-    if (bl.length) return {kind:"tidy", text:`Your ${L(p)} in row ${RR(p)+1} rules out its whole row, column and region, plus the cells touching it. Cross those out.`, cells:bl, focus:[p], act:{x:bl}};
+    if (bl.length){
+      // say WHY each cell goes: same row, same column, same region, or touching the pick
+      const g = P.regions[RR(p)][CC(p)], why = {}, n = {row:0, col:0, reg:0, touch:0};
+      bl.forEach(j => { const k = RR(j)===RR(p) ? "row" : CC(j)===CC(p) ? "col" : P.regions[RR(j)][CC(j)]===g ? "reg" : "touch"; why[j] = k; n[k]++; });
+      const lit = blockedByP(P, p).concat(p);
+      const sw = `<span class="sw" style="background:var(--r${g})"></span>`;
+      const chips = [n.row && `<span class="wchip"><i class="wg">↔</i>row ${RR(p)+1}</span>`, n.col && `<span class="wchip"><i class="wg">↕</i>column ${CC(p)+1}</span>`,
+        n.reg && `<span class="wchip">${sw}<b>${RNAME[g]}</b> region</span>`, n.touch && `<span class="wchip"><i class="wg">✳</i>touching</span>`].filter(Boolean).join("");
+      return {kind:"tidy", text:`Your ${L(p)} in row ${RR(p)+1} rules out its whole row, column and ${sw}<b>${RNAME[g]}</b> region, plus the cells touching it. Each glowing cell shows why:<span class="wchips">${chips}</span>Cross those out.`, cells:bl, focus:[p], why, lit, act:{x:bl}};
+    }
   }
 
   const cand = new Set(); for (let i=0;i<NN*NN;i++) if (marks[i]===0) cand.add(i);
@@ -1324,7 +1358,7 @@ function drawTree(){
   for (let y = top + 400; y < bottom - 200; y += 900) out += `<ellipse cx="${cx0}" cy="${y}" rx="${W*.7}" ry="38" fill="#9C84E8" opacity=".07" filter="url(#soft)"/>`;
   for (let j = 0; j < Math.floor(H / 34); j++){
     const x = rnd() < .5 ? rnd() * W * .22 : W - rnd() * W * .22, y = top - 120 + rnd() * (H - top);
-    out += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(1 + rnd()*1.8).toFixed(1)}" fill="${rnd() < .6 ? "#FFE7A8" : "#C9B6FF"}" opacity="${(.35 + rnd()*.5).toFixed(2)}"><animate attributeName="cy" values="${y.toFixed(1)};${(y - 14).toFixed(1)};${y.toFixed(1)}" dur="${(5 + rnd()*5).toFixed(1)}s" repeatCount="indefinite"/></circle>`;
+    out += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(1 + rnd()*1.8).toFixed(1)}" fill="${rnd() < .6 ? "#FFE7A8" : "#C9B6FF"}" opacity="${(.35 + rnd()*.5).toFixed(2)}"/>`; rnd(); rnd();   // still motes: hundreds of moving ones made every tap on the tree lag
   }
   for (let y = top + 180, k = 3; y < bottom; y += 380, k++){
     const x = (k % 2 ? 0.08 : 0.92) * W;
@@ -1545,7 +1579,9 @@ function showGuide(fromSettings){
       <div class="row" style="width:100%">
         ${k > 0 ? `<button class="btn" id="gBack" style="flex:1">Back</button>` : ""}
         <button class="btn gold" id="gNext" style="flex:2">${k < pages.length - 1 ? "Next" : fromSettings ? "Done" : "Start climbing"}</button>
-      </div>`, true);
+      </div>
+      ${fromSettings ? `<button class="btn" id="gLessons">Replay the lessons</button>` : ""}`, true);
+    if ($("gLessons")) $("gLessons").onclick = () => lessonsSheet();
     if ($("gBack")) $("gBack").onclick = () => { k--; dir = -1; pageSound(0, true); draw(); };
     $("gNext").onclick = () => { if (k < pages.length - 1){ k++; dir = 1; pageSound(0, true); draw(); } else { SFX.ui(); closeSheet(); } };
   };
@@ -1611,7 +1647,7 @@ function startLevel(idx){
   $("pip").className = "pip"; $("pip").innerHTML = AV_STAND() + AV_BALL();
   $("banner").hidden = true; $("hintbox").hidden = true; $("card").classList.remove("glow"); $("yt").hidden = true; $("tray").classList.remove("want");
   $("orbrow").hidden = !G.orb; $("tray").hidden = G.orb; $("tip").hidden = G.orb || !!G.tut;
-  $("actions").hidden = !!G.tut; $("nextBtn").hidden = true;
+  $("actions").hidden = !!G.tut; $("nextBtn").hidden = true; $("rulesBtn").hidden = !!G.tut;
   $("guessBtn").hidden = P.id === "T1"; $("guessBtn").classList.remove("pulse");
   $("runeSeal").hidden = true; $("runeSeal").classList.remove("fade"); $("runeAlert").hidden = true; clearTimeout(raTimer);
   if (P.id === "T1") $("orbtip").textContent = "Solved letters fly into the orb, jumbled. Finish the grid, then unscramble them.";
@@ -1642,7 +1678,7 @@ function buildBoard(){
     if (c < N-1 && P.regions[r][c+1] !== g) d.style.borderRightColor = "var(--wall)";
     if (r < N-1 && P.regions[r+1][c] !== g) d.style.borderBottomColor = "var(--wall)";
     d.setAttribute("aria-label", `Row ${r+1}, column ${c+1}, ${P.grid[r][c]}, ${RNAME[g]} region`);
-    d.innerHTML = `<span class="l">${P.grid[r][c]}</span>${XM}<span class="orb">${P.grid[r][c]}</span>`;
+    d.innerHTML = `<span class="l">${P.grid[r][c]}</span>${XM}<span class="orb">${P.grid[r][c]}</span><i class="why" aria-hidden="true"></i>`;
     B.appendChild(d);
   }
 }
@@ -1650,7 +1686,13 @@ const cellEl = i => $("board").children[i];
 
 function render(){
   const P = G.P, hl = new Set(G.hint ? G.hint.cells || [] : []), fo = new Set(G.hint ? G.hint.focus || [] : []);
+  // every hint spotlights the cells it talks about and dims the rest of the board
+  const why = G.hint && G.hint.why || null, H = G.hint, litArr = H ? (H.lit || (H.focus && H.focus.length > 1 ? H.focus.concat(H.cells || []) : null)) : null, lit = new Set(litArr || []);
+  $("board").classList.toggle("spot", !!litArr);
   [...$("board").children].forEach((el, i) => {
+    el.classList.toggle("lit", lit.has(i));
+    const w = el.querySelector(".why"), k = why && hl.has(i) && G.marks[i] === 0 ? why[i] : "";
+    if (w && w.dataset.w !== k){ w.dataset.w = k; w.textContent = k === "row" ? "↔" : k === "col" ? "↕" : k === "touch" ? "✳" : ""; }
     const m = G.marks[i];
     el.classList.toggle("x", m === 1); el.classList.toggle("on", m === 2);
     el.classList.toggle("rev", m === 2 && G.revealed.has(i));
@@ -2168,7 +2210,7 @@ function tutRender(){
   if (T.phase === "offer") return;
   const s = solverStep(P, G.marks, "");
   if (!s.act){ G.hint = null; render(); return; }
-  T.s = s; G.hint = {cells: s.cells, focus: s.focus};
+  T.s = s; G.hint = {cells: s.cells, focus: s.focus, why: s.why, lit: s.lit};
   const how = s.act.pick ? " <b>Double-tap</b> the glowing letter to pick it." : ` <b>Tap</b> or <b>drag across</b> the glowing cells to cross them out.${s.act.x.length > 1 ? ` <span class="tleft">${s.act.x.filter(j => G.marks[j] !== 1).length} to go</span>` : ""}`;
   setCard("Pip", s.text + how, P.id === "T2" ? sub : "");
   render();
@@ -2285,7 +2327,49 @@ function openSheet(html, locked){
   $("modal").onclick = e => { if (!locked && e.target === $("modal")) closeSheet(); };
   $("sheet").tabIndex = -1; $("sheet").focus({preventScroll:true});   // focus the dialog itself, so no button wears a focus ring on a tap
 }
-function closeSheet(){ $("modal").hidden = true; clearInterval(adTimer); if (window.LB) LB.open = false; }
+let mapDirty = false;
+function closeSheet(){ if (mapDirty){ mapDirty = false; setTimeout(() => { if (!$("map").hidden) renderMap(); }, 30); } $("modal").hidden = true; clearInterval(adTimer); if (window.LB) LB.open = false; }
+
+/* ---------- replay the lessons any time, without touching progress ---------- */
+function lessonsSheet(fromLevel){
+  openSheet(`${emblem("guide", ICON.hint)}
+    ${dropTitle("Replay a lesson")}
+    <p class="ssub">Lessons never change your progress, moondust or runes.${fromLevel ? " You'll leave this level and can start it again after." : ""}</p>
+    <div class="lessons">
+      <button class="btn" id="lsT1">Lesson 1<small>The grid: rows, columns, regions, crossing and picking</small></button>
+      <button class="btn" id="lsT2">Lesson 2<small>Guessing early, the orb and runes</small></button>
+      <button class="btn gold" id="lsBack">${fromLevel ? "Back to the level" : "Done"}</button>
+    </div>`);
+  const go = id => () => { SFX.ui(); startLevel(SEQ.findIndex(p => p.id === id)); };
+  $("lsT1").onclick = go("T1"); $("lsT2").onclick = go("T2");
+  $("lsBack").onclick = () => fromLevel ? rulesSheet() : closeSheet();
+}
+// the ? in a level: the rules that matter right now, with this level's live state
+function rulesSheet(){
+  if (!G) return;
+  const P = G.P, C = ECON.cost, found = picksRows().size, unfound = N - found, vault = P.kind === "vault";
+  let runeNow;
+  if (vault) runeNow = `<span class="now gone">Vaults have no rune</span>`;
+  else if (G.replay) runeNow = `<span class="now gone">Replays give no rune</span>`;
+  else if (G.early || G.wordSolved) runeNow = G.earned ? `<span class="now ok">Rune earned ✓</span>` : `<span class="now gone">Word solved, no rune this time</span>`;
+  else if (unfound >= RUNE_HIDDEN) runeNow = `<span class="now ok">${unfound} letters unfound: guess now for the rune</span>`;
+  else runeNow = `<span class="now gone">Only ${unfound} unfound: this level's rune has faded</span>`;
+  const hearts = G.bonus ? `You've solved the word, so the grid is free now: <b>mistakes cost nothing</b> and hints and reveals are free.`
+    : `You have <b>${G.lives} of ${MAX_LIVES}</b>. A <b>wrong pick</b> on the grid or a <b>wrong word guess</b> costs one. Out of hearts, start again or watch an ad for one more.`;
+  openSheet(`${dropTitle("How this level works")}
+    <div class="rules">
+      <div class="rl"><i>★</i><p><b class="t">The goal</b>Solve the riddle. The grid is your <b>free hint</b>: each letter you pick flies into the orb, jumbled. Tap <b>Guess the word</b> whenever you think you know it.</p></div>
+      <div class="rl"><i>ᚱ</i><p><b class="t">The rune</b>${vault ? "Vaults give no rune. A perfect vault (no mistakes, no help) pays ✦" + ECON.earn.vaultPerfect + "." : `Guess the word while <b>${RUNE_HIDDEN} or more</b> letters are still unfound and you earn this level's rune. Each level offers it <b>once</b>: find one letter too many and it fades for good.`}<br>${runeNow}</p></div>
+      <div class="rl"><i style="color:#FF7FA8">♥</i><p><b class="t">Hearts</b>${hearts}</p></div>
+      <div class="rl"><i>✦</i><p><b class="t">Moondust · you have ${inv.dust}</b>Grid: <b>Hint ✦${C.hint}</b> shows the next logical step, <b>Reveal ✦${C.reveal}</b> solves a cell. Guess screen: place a letter for <b>✦${C.placeKnown}</b> (found) or <b>✦${C.placeUnknown}</b> (not found yet). Out of moondust? A short ad helps instead.</p></div>
+      <div class="rl"><i>⌖</i><p><b class="t">Grid rules</b>One pick in every row, column and coloured region. Picks never touch, not even corner to corner. Tap to cross out, double-tap to pick.</p></div>
+    </div>
+    <button class="btn" id="rLessons">Replay the lessons</button>
+    <button class="btn gold" id="rOk">Got it</button>`);
+  $("rLessons").onclick = () => lessonsSheet(true);
+  $("rOk").onclick = closeSheet;
+}
+$("rulesBtn").onclick = () => { SFX.ui(); rulesSheet(); };
 
 /* ---------- settings ---------- */
 $("setBtn").onclick = () => {
@@ -2295,6 +2379,7 @@ $("setBtn").onclick = () => {
     <label class="toggle"><span>Auto-cross<small>Cross out blocked cells after each pick</small></span><input type="checkbox" id="sAuto" ${settings.autoX ? "checked" : ""}></label>
     <label class="toggle"><span>Unlock all levels<small>For testing the prototype, including vaults</small></span><input type="checkbox" id="sAll" ${settings.unlockAll ? "checked" : ""}></label>
     <button class="btn" id="sGuide">How to play</button>
+    <button class="btn" id="sLessons">Replay the lessons</button>
     <button class="btn" id="sReset">Reset progress</button>
     <button class="btn gold" id="sDone">Done</button>`);
   $("sSnd").onchange = e => { settings.sound = e.target.checked; saveAll(); SFX.ui(); };
@@ -2304,6 +2389,7 @@ $("setBtn").onclick = () => {
   $("sReset").onclick = () => { ["guideSeen", "vaultIntro", "avatar"].forEach(k => { try { localStorage.removeItem("sd2-" + k); } catch (e) {} }); store.set("vaultsShown", []); done = {}; runes = {}; inv = {hints: ECON.start.hints, revs: 0, dust: ECON.start.dust}; saveAll(); renderMap(); closeSheet(); setTimeout(() => { if ($("modal").hidden) avatarSheet(true); }, 300); };
   $("sDone").onclick = closeSheet;
   $("sGuide").onclick = () => showGuide(true);
+  $("sLessons").onclick = () => lessonsSheet();
 
 };
 $("backBtn").onclick = () => { G = null; showMap(); };
@@ -2491,9 +2577,11 @@ function avatarSheet(first){
   $("sheet").querySelectorAll(".avcard").forEach(b => b.onclick = () => {
     const a = avById(b.dataset.av);
     if (!avatarOpen(a)){ b.animate([{transform: "translateX(-5px)"}, {transform: "translateX(5px)"}, {transform: "none"}], {duration: 240}); return; }
-    store.set("avatar", a.id); SFX.rune(); lbSent0(); lbPush(); renderMap(); avatarSheet(first);
+    if (curAvatar().id === a.id) return;
+    store.set("avatar", a.id); SFX.rune(); buzz("pick"); mapDirty = true; avatarSheet(first);
+    setTimeout(() => { lbSent0(); lbPush(); }, 400);   // the tree and leaderboard catch up after the sheet has answered the tap
   });
-  $("avDone").onclick = () => { closeSheet(); renderMap(); };
+  $("avDone").onclick = () => { closeSheet(); };
   // keep keyboard focus on the chosen card, so its focus ring never sits on a different companion
   const curCard = $("sheet").querySelector(".avcard.cur"); if (curCard) curCard.focus({preventScroll: true});
 }
