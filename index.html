@@ -429,6 +429,9 @@ body.hasbanner .screen{padding-bottom:calc(74px + env(safe-area-inset-bottom,0px
 .tech.new{background:linear-gradient(90deg,rgba(255,217,120,.3),rgba(126,99,214,.4));color:#FFF1C4;box-shadow:0 0 12px rgba(255,217,120,.35)}
 .tech.new b{color:#FFD978}
 .techtip{display:block;margin:0 0 8px;padding:7px 10px;border-left:3px solid var(--gold2);border-radius:0 10px 10px 0;background:rgba(255,217,120,.08);font-size:13.5px;font-weight:600;color:#F3E8C8}
+.castlink{width:100%;padding:9px 12px;border:1px dashed rgba(255,158,192,.55);border-radius:14px;background:transparent;color:#FFD0E0;font:600 14px var(--body);display:flex;align-items:center;justify-content:center;gap:7px}
+.castlink b{font-weight:800}
+.castlink.nudge{border-style:solid;background:rgba(255,127,168,.1);animation:glow 1.6s ease-in-out 3}
 .practised{font-size:13px;color:#E3D9FF;margin:0}
 #hintBtn.pulse{animation:glow 1.4s ease-in-out infinite}
 .row{display:flex;gap:8px;flex-wrap:wrap}
@@ -1965,7 +1968,7 @@ function openSpell(mode, keep){
     P.kind === "tut" ? "Guess right and you earn a rune." :
     G.replay ? "This is a replay, so no rune, but a right guess finishes the level. A wrong guess costs a heart." :
     runeOK ? "Guess right now and you earn this level's rune. It's your only chance at it. A wrong guess costs a heart." : `A rune needs ${RUNE_HIDDEN}+ letters still unfound, so none this time, but a right guess finishes the level.`;
-  const castRow = mode === "final" && !G.tut ? `<button class="btn" id="sCast" hidden style="width:100%;border-color:#FF9EC0;color:#FFD0E0">Cast it for me <span class="badge" style="background:#FF7FA8;color:#2A1640">▶ Ad</span></button>` : "";
+  const castRow = mode === "final" && !G.tut ? `<button class="castlink" id="sCast">Stuck? <b>Cast it for me</b> <span class="badge" style="background:#FF7FA8;color:#2A1640">▶ Ad</span></button>` : "";
   const anchorLine = G.anchorDone ? `<p class="anchorline">Your first letter is already in its place.${mode === "final" && !G.finalGift ? " Finishing the grid also earns you one free letter to place." : ""}</p>` : "";
   openSheet(`
     <h2>${title}</h2>
@@ -1997,12 +2000,12 @@ function openSpell(mode, keep){
     $("sClose").onclick = () => { G.earlyDraft = SP.slots.map((ch, k) => SP.locked.has(k) ? null : ch); closeSheet(); if (G.tut && G.tut.phase === "offer") { G.tut.phase = "guided"; tutRender(); } };
   }
   $("sPlace").onclick = placeStart;
-  if ($("sCast")){ $("sCast").onclick = castSpell; castOffer(); clearTimeout(G.castTimer); const g0 = G; G.castTimer = setTimeout(() => { if (G !== g0 || !G) return; G.castWaited = true; castOffer(); }, 40000); }
+  if ($("sCast")) $("sCast").onclick = castSpell;   // always on offer: it costs an ad, so there's no need to hide it
   spellRender();
 }
 /* Cast it for me: once the grid is done and the player is stuck (a wrong guess, or 40 seconds of staring), one ad
    solves the word and clears the level. It pays the clear reward only: no perfect bonus, no leaderboard hearts. */
-function castOffer(){ const b = $("sCast"); if (b && G && SP && SP.mode === "final" && ((G.wrongFinal || 0) > 0 || G.castWaited)) b.hidden = false; }
+function castOffer(){ const b = $("sCast"); if (b && (G.wrongFinal || 0) > 0) b.classList.add("nudge"); }   // after a wrong guess it glows a little
 function castSpell(){
   watchAd("cast", () => {
     G.cast = true; G.helped = true; G.lockedPerfect = undefined; track("cast_for_me", lvlProps());
