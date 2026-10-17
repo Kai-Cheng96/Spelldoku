@@ -1003,14 +1003,14 @@ const lvlProps = () => G ? {level: G.P.id, kind: G.P.kind, tier: G.P.tier || nul
 const MAX_LIVES = 3, RUNES_PER_VAULT = 2, RUNE_HIDDEN = 3;   // a rune needs the word guessed with 3+ letters still unfound
 // the whole economy in one table, so it can be tuned after testing
 const ECON = {
-  start: {hints: 3, dust: 0},                                   // starter hints, then moondust or ads
-  earn:  {clear: 1, perfect: 2, early: 3, boss: 5, vault: 10, vaultPerfect: 25},
+  start: {hints: 5, revs: 3, dust: 40},                         // a generous starter kit so new players can learn with help
+  earn:  {clear: 5, perfect: 5, early: 8, boss: 10, vault: 25, vaultPerfect: 50},   // a hint costs about 3 levels of earnings
   cost:  {hint: 20, reveal: 30, placeKnown: 10, placeUnknown: 20, placeFinal: 10}
 };
 let done = store.get("done", {});
 let runes = store.get("runes", {});
 let inv = store.get("inv", null);
-if (!inv || inv.dust === undefined) inv = {hints: ECON.start.hints, revs: 0, dust: ECON.start.dust};
+if (!inv || inv.dust === undefined) inv = {hints: ECON.start.hints, revs: ECON.start.revs, dust: ECON.start.dust};
 let settings = store.get("settings", {autoX: false, unlockAll: false});
 const saveAll = () => { store.set("done", done); store.set("runes", runes); store.set("inv", inv); store.set("settings", settings); if (typeof lbPush === "function") lbPush(); };
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -2281,12 +2281,41 @@ function tutRender(){
     return;
   }
   if (T.phase === "offer") return;
-  const s = solverStep(P, G.marks, "");
+  let s = solverStep(P, G.marks, "");
   if (!s.act){ G.hint = null; render(); return; }
+  if (s.kind === "tidy" && s.why) s = tutTidyStep(s);   // lessons clear around a pick one line at a time
   T.s = s; G.hint = {cells: s.cells, focus: s.focus, why: s.why, lit: s.lit};
+  if (s.info){ T.info = true; setCard("Pip", s.text, P.id === "T2" ? sub : ""); $("nextBtn").hidden = false; $("nextBtn").textContent = "Got it"; render(); return; }
   const how = s.act.pick ? " <b>Double-tap</b> the glowing letter to pick it." : ` <b>Tap</b> or <b>drag across</b> the glowing cells to cross them out.${s.act.x.length > 1 ? ` <span class="tleft">${s.act.x.filter(j => G.marks[j] !== 1).length} to go</span>` : ""}`;
   setCard("Pip", s.text + how, P.id === "T2" ? sub : "");
   render();
+}
+// lessons: split "a pick rules out its row, column and region" into row, then column, then region, then touching
+function tutTidyStep(s){
+  const P = G.P, p = s.focus[0], r = Math.floor(p / N), c = p % N, g = P.regions[r][c], ch = P.grid[r][c];
+  // walk the rules in order; a rule with nothing left to cross is still explained once, the first time it comes up
+  const T = G.tut; T.taught = T.taught || new Set(); T.seenFor = T.seenFor || {};
+  const done4 = T.seenFor[p] = T.seenFor[p] || new Set();
+  const order = ["row", "col", "reg", "touch"];
+  const k = order.find(k => s.cells.some(i => s.why[i] === k) || (!T.taught.has(k) && !done4.has(k)));
+  const cells = s.cells.filter(i => s.why[i] === k), sw = `<span class="sw" style="background:var(--r${g})"></span>`;
+  T.taught.add(k); done4.add(k);
+  const all = [...Array(N * N).keys()];
+  const lit = (k === "row" ? all.filter(i => Math.floor(i / N) === r) : k === "col" ? all.filter(i => i % N === c)
+    : k === "reg" ? all.filter(i => P.regions[Math.floor(i / N)][i % N] === g)
+    : all.filter(i => Math.abs(Math.floor(i / N) - r) <= 1 && Math.abs(i % N - c) <= 1));
+  if (!cells.length){   // nothing to cross: just show the rule on the lit line or region
+    const name = k === "row" ? `<b>row ${r + 1}</b>` : k === "col" ? `<b>column ${c + 1}</b>` : k === "reg" ? `the ${sw}<b>${RNAME[g]}</b> region` : "";
+    const rule = k === "row" ? "Each row gets just one pick." : k === "col" ? "Each column gets just one pick." : k === "reg" ? "Each colour region gets just one pick too." : "Picks can never touch, not even corner to corner.";
+    const info = k === "touch" ? `${rule} The cells around your <b>${ch}</b> are already crossed out.` : `${rule} Your <b>${ch}</b> takes ${name}, and every other cell in it is already crossed out.`;
+    return Object.assign({}, s, {cells: [], why: {}, lit: lit.concat(p), text: info, info: true, act: {x: []}});
+  }
+  const text = k === "row" ? `Your <b>${ch}</b> is the one pick for <b>row ${r + 1}</b>, so nothing else in that row can be picked. Cross out the rest of row ${r + 1}.`
+    : k === "col" ? `Each column also gets just one pick. Your <b>${ch}</b> takes <b>column ${c + 1}</b>, so cross out the rest of that column.`
+    : k === "reg" ? `Each colour region gets just one pick too. Your <b>${ch}</b> takes the ${sw}<b>${RNAME[g]}</b> region, so cross out the rest of it.`
+    : `And picks can never <b>touch</b>, not even corner to corner. Cross out the cells touching your <b>${ch}</b>.`;
+  const why = {}; cells.forEach(i => why[i] = k);
+  return Object.assign({}, s, {cells, why, lit: lit.concat(p), text, act: {x: cells}});
 }
 // lessons: the player crosses each highlighted cell themselves; the next step starts once all are done
 function tutCross(i){
@@ -2297,7 +2326,9 @@ function tutCross(i){
   if (tl) tl.textContent = left ? `${left} to go` : "done!";
   if (!left && !G.tut.advancing){ G.tut.advancing = true; setTimeout(() => { G.tut.advancing = false; G.tut.snap = false; tutRender(); }, 380); }
 }
-$("nextBtn").onclick = () => { const T = G.tut; T.step++; if (T.step >= INTROS[G.P.id].length) T.phase = "guided"; tutRender(); };
+$("nextBtn").onclick = () => { const T = G.tut;
+  if (T.info){ T.info = false; $("nextBtn").textContent = "Next"; tutRender(); return; }
+  T.step++; if (T.step >= INTROS[G.P.id].length) T.phase = "guided"; tutRender(); };
 
 /* ---------- end states ---------- */
 function win(o){
@@ -2462,7 +2493,7 @@ $("setBtn").onclick = () => {
   $("sAuto").onchange = e => { settings.autoX = e.target.checked; saveAll(); };
   $("sVib").onchange = e => { settings.vibe = e.target.checked; saveAll(); if (settings.vibe) buzz("win"); };
   $("sAll").onchange = e => { settings.unlockAll = e.target.checked; saveAll(); renderMap(); };
-  $("sReset").onclick = () => { ["guideSeen", "vaultIntro", "avatar", "techSeen"].forEach(k => { try { localStorage.removeItem("sd2-" + k); } catch (e) {} }); store.set("vaultsShown", []); done = {}; runes = {}; inv = {hints: ECON.start.hints, revs: 0, dust: ECON.start.dust}; saveAll(); renderMap(); closeSheet(); setTimeout(() => { if ($("modal").hidden) avatarSheet(true); }, 300); };
+  $("sReset").onclick = () => { ["guideSeen", "vaultIntro", "avatar", "techSeen"].forEach(k => { try { localStorage.removeItem("sd2-" + k); } catch (e) {} }); store.set("vaultsShown", []); done = {}; runes = {}; inv = {hints: ECON.start.hints, revs: ECON.start.revs, dust: ECON.start.dust}; saveAll(); renderMap(); closeSheet(); setTimeout(() => { if ($("modal").hidden) avatarSheet(true); }, 300); };
   $("sDone").onclick = closeSheet;
   $("sGuide").onclick = () => { track("guide_opened"); showGuide(true); };
   $("sLessons").onclick = () => lessonsSheet();
@@ -2838,7 +2869,7 @@ lbInit();
 
 /* ---------- daily login streak: 7 days, then the calendar starts again ---------- */
 window.STREAK_READY = true;
-const STREAK = [{dust: 5}, {dust: 5}, {hints: 1}, {dust: 10}, {revs: 1}, {dust: 15}, {hints: 3}];
+const STREAK = [{dust: 10}, {dust: 10}, {hints: 1}, {dust: 20}, {revs: 1}, {dust: 30}, {hints: 3}];
 const localDay = (t = Date.now()) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const rewardText = g => g.dust ? `✦${g.dust}` : g.hints ? `${g.hints} hint${g.hints > 1 ? "s" : ""}` : `${g.revs} reveal${g.revs > 1 ? "s" : ""}`;
 const EYE = `<svg viewBox="0 0 24 24"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z" fill="#2A1D58" stroke="#E3D9FF" stroke-width="1.6"/><circle cx="12" cy="12" r="3.6" fill="#FFD978"/><circle cx="13.2" cy="10.8" r="1.1" fill="#fff"/></svg>`;
